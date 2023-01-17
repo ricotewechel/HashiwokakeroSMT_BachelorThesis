@@ -1,0 +1,89 @@
+import scala.concurrent.impl.FutureConvertersImpl;
+
+import java.util.*;
+
+public class Game {
+    private final int fieldSize;
+    private final ArrayList<Node> nodes = new ArrayList<>();
+    private final ArrayList<Bridge> horBridges = new ArrayList<>();
+    private final ArrayList<Bridge> verBridges = new ArrayList<>();
+
+    public Game(int size, String encoding) {
+        this.fieldSize = size;
+        int count = 0;
+        for (char c : encoding.toCharArray()) { // Decode puzzle
+            if (Character.isAlphabetic(c)) { // Letter case
+                count += c - 96;
+            } else if (Character.isDigit(c)) { // Number case
+                Node node = new Node(count / this.fieldSize, count % this.fieldSize, c);
+                this.nodes.add(node);
+                count++;
+            } else System.out.println("Error");
+        }
+        for (Node node : this.nodes) { // Determine all possible bridges
+            this.findNodeEast(node);
+            this.findNodeSouth(node);
+        }
+    }
+
+    // Works because list is sorted from left to right top to bottom
+    private void findNodeEast(Node node) {
+        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
+            if (node.getX() == this.nodes.get(i).getX()) {
+                this.horBridges.add(new Bridge(node, this.nodes.get(i)));
+                return;
+            }
+        }
+    }
+
+    // Works because list is sorted from left to right top to bottom
+    private void findNodeSouth(Node node) {
+        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
+            if (node.getY() == this.nodes.get(i).getY()) {
+                this.verBridges.add(new Bridge(node, this.nodes.get(i)));
+                return;
+            }
+        }
+    }
+
+    public ArrayList<Node> getNodes() {
+        return this.nodes;
+    }
+
+    public ArrayList<Bridge> getHorBridges() {
+        return this.horBridges;
+    }
+
+    public ArrayList<Bridge> getVerBridges() {
+        return this.verBridges;
+    }
+
+    public void printGame() {
+        // Define field
+        char[][] field = new char[this.fieldSize][this.fieldSize];
+        for (int i = 0; i < this.fieldSize; i++) {
+            for (int j = i; j < this.fieldSize; j++) {
+                field[i][j] = '.';
+            }
+        }
+
+        // Fill field with node values (setup)
+        for (Node n : this.nodes) {
+            field[n.getX()][n.getY()] = (char) n.getVal();
+        }
+
+        // Fill field with bridges (solution)
+        // TODO
+
+
+        // Print
+        for (int i = 0; i < this.fieldSize; i++) {
+            for (int j = 0; j < this.fieldSize; j++) {
+                System.out.print(field[i][j]);
+                System.out.print('\t');
+            }
+            System.out.print('\n');
+        }
+    }
+
+}
