@@ -5,8 +5,7 @@ import java.util.*;
 public class Game {
     private final int fieldSize;
     private final ArrayList<Node> nodes = new ArrayList<>();
-    private final ArrayList<Bridge> horBridges = new ArrayList<>();
-    private final ArrayList<Bridge> verBridges = new ArrayList<>();
+    private final ArrayList<Bridge> bridges = new ArrayList<>();
 
     public Game(int size, String encoding) {
         this.fieldSize = size;
@@ -30,7 +29,7 @@ public class Game {
     private void findNodeEast(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getX() == this.nodes.get(i).getX()) {
-                this.horBridges.add(new Bridge(node, this.nodes.get(i)));
+                this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.HORIZONTAL));
                 return;
             }
         }
@@ -40,7 +39,7 @@ public class Game {
     private void findNodeSouth(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getY() == this.nodes.get(i).getY()) {
-                this.verBridges.add(new Bridge(node, this.nodes.get(i)));
+                this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.VERTICAL));
                 return;
             }
         }
@@ -50,12 +49,8 @@ public class Game {
         return this.nodes;
     }
 
-    public ArrayList<Bridge> getHorBridges() {
-        return this.horBridges;
-    }
-
-    public ArrayList<Bridge> getVerBridges() {
-        return this.verBridges;
+    public ArrayList<Bridge> getBridges() {
+        return this.bridges;
     }
 
     public void printGame() {
