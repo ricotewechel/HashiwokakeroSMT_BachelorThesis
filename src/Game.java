@@ -30,7 +30,7 @@ public class Game {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getX() == this.nodes.get(i).getX()) {
                 this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.HORIZONTAL));
-                return;
+                return; // TODO geen void maar return bridge
             }
         }
     }
@@ -40,7 +40,7 @@ public class Game {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getY() == this.nodes.get(i).getY()) {
                 this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.VERTICAL));
-                return;
+                return; // TODO geen void maar return bridge
             }
         }
     }
@@ -53,7 +53,7 @@ public class Game {
         return this.bridges;
     }
 
-    public void printGame() {
+    public void printGame() { // TODO tostring
         // Define field
         char[][] field = new char[this.fieldSize][this.fieldSize];
         for (int i = 0; i < this.fieldSize; i++) {
@@ -71,7 +71,7 @@ public class Game {
         // TODO
 
 
-        // Print
+        // Print    TODO split print van logica
         for (int i = 0; i < this.fieldSize; i++) {
             for (int j = 0; j < this.fieldSize; j++) {
                 System.out.print(field[i][j]);

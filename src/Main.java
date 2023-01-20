@@ -5,9 +5,6 @@ import org.sosy_lab.common.log.BasicLogManager;
 import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.java_smt.*;
 import org.sosy_lab.java_smt.api.*;
-import scala.Boolean;
-
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +25,7 @@ public class Main {
         }
 
 
-        Configuration config = Configuration.fromCmdLineArguments(args);
+        Configuration config = Configuration.fromCmdLineArguments(args);    // TODO class solver
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();
         SolverContext context = SolverContextFactory.createSolverContext(
@@ -38,37 +35,47 @@ public class Main {
         BooleanFormulaManager bmgr = fmgr.getBooleanFormulaManager();
         IntegerFormulaManager imgr = fmgr.getIntegerFormulaManager();
 
-        // Create variables for each potential bridge
-        ArrayList<BooleanFormula> variables = new ArrayList<>();
+        // Create variables for each node and define them as constraint to simulate initial game board
+        ArrayList<BooleanFormula> nodeVariables = new ArrayList<>();
+        for (int i = 0; i < (game1.getNodes().size()); i++) {
+            NumeralFormula.IntegerFormula nodeVariable = imgr.makeVariable(Integer.toString(i));
+            nodeVariables.add(
+                    imgr.equal(nodeVariable, imgr.makeNumber(game1.getNodes().get(i).getVal()))
+            );
+        }
+        BooleanFormula nodeVariablesConstraint = bmgr.and(nodeVariables);
+
+        // Create variables for each potential bridge (a.k.a. moves to make)
+        ArrayList<BooleanFormula> bridgeVariables = new ArrayList<>();
         for (int i = 0; i < (game1.getBridges().size()); i++) {
-            variables.add(bmgr.makeVariable(Integer.toString(i)));
+            bridgeVariables.add(bmgr.makeVariable(Integer.toString(i)));
         }
 
-        // Construct constraint 1: Nodes satisfied
-        ArrayList<BooleanFormula> nodeSatisfiedList = new ArrayList<>();
+        // Construct constraint 1: Nodes are satisfied
+        ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
         for (Node n : game1.getNodes()) {
-            nodeSatisfiedList.add(imgr.equal(imgr.makeNumber(n.getVal()), imgr.makeNumber(
+            nodesSatisfiedList.add(imgr.equal(imgr.makeNumber(n.getVal()), imgr.makeNumber(
                 game1.getBridges().stream().filter(
                     (bridge) -> ( // Filter on bridges of which an endpoint matches node coordinates
                         n.getX() == bridge.getA().getX() && n.getY() == bridge.getA().getY()
                                 || n.getX() == bridge.getB().getX() && n.getY() == bridge.getB().getY()
                     )
-                ).count()
+                ).count()   // TODO forgot about bridge widths
             )));
         }
-        BooleanFormula nodesSatisfied = bmgr.and(nodeSatisfiedList);
+        BooleanFormula nodesSatisfiedConstraint = bmgr.and(nodesSatisfiedList);
 
         // Construct constraint 2: Bridge widths
-        ArrayList<BooleanFormula> bridgeWidthValidList = new ArrayList<>();
+        ArrayList<BooleanFormula> bridgeWidthsValidList = new ArrayList<>();
         for (Bridge b : game1.getBridges()) {
-            bridgeWidthValidList.add(
+            bridgeWidthsValidList.add(
                     bmgr.and(
                             imgr.greaterOrEquals(imgr.makeNumber(b.getAmount()), imgr.makeNumber(0)),
                             imgr.lessOrEquals(imgr.makeNumber(b.getAmount()), imgr.makeNumber(2))
                     )
             );
         }
-        BooleanFormula bridgeWidthsValid = bmgr.and(bridgeWidthValidList);
+        BooleanFormula bridgeWidthsValidConstraint = bmgr.and(bridgeWidthsValidList);
 
         // Construct constraint 3: No crossing bridges  TODO can probably be stripped on redundant clauses
         ArrayList<BooleanFormula> bridgesDontCrossList = new ArrayList<>();
@@ -121,18 +128,46 @@ public class Main {
                 }
             }
         }
-        BooleanFormula bridgesDontCross = bmgr.and(bridgesDontCrossList);
+        BooleanFormula bridgesDontCrossConstraint = bmgr.and(bridgesDontCrossList);
 
-        // Construct constraint 4: No overlapping bridges or obstructions by nodes
+        // Construct constraint 4: Everything strongly connected
 
 
-        // Construct constraint 5: Everything strongly connected
+        // Solve with SMT solver
+        Model model = null;
+        try (ProverEnvironment prover = context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
+            // Add constraints
+            prover.addConstraint(nodesSatisfiedConstraint);
+            prover.addConstraint(bridgeWidthsValidConstraint);
+            prover.addConstraint(bridgesDontCrossConstraint);
 
+            // Add input puzzle as constraint
+            prover.addConstraint(nodeVariablesConstraint);
+
+            boolean isUnsat = prover.isUnsat();
+            if (!isUnsat) {
+                model = prover.getModel();
+            }
+        } catch (SolverException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        assert model != null;
+
+        // Retrieve solution
+        ArrayList<Boolean> solution = new ArrayList<>();
+        for (int i = 0; i < 81; i++) {
+            solution.add(model.evaluate(bridgeVariables.get(i)));
+        }
+
+        for (Boolean b : solution) {
+            System.out.println(b);
+        }
 
 //        game1.printGame();
 //        System.out.println();
 //        game2.printGame();
-
-//         Sudoku.solve(args);
+//
+//        Sudoku.solve(args);
     }
 }
