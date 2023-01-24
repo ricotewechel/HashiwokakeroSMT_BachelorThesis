@@ -23,17 +23,4 @@ public class Node{
     public String toString() {
         return (Integer.toString(this.value - 48));
     }
-
-/*    @Override
-    public int compareTo(Node node) {
-        if (this.x > node.x) {
-            return 1;
-        }
-        else if (this.x < node.x) {
-            return -1;
-        }
-        else {
-            return Integer.compare(this.y, node.y);
-        }
-    }*/
 }

@@ -1,5 +1,6 @@
 import scala.concurrent.impl.FutureConvertersImpl;
 
+import java.math.BigInteger;
 import java.util.*;
 
 public class Game {
@@ -14,7 +15,7 @@ public class Game {
             if (Character.isAlphabetic(c)) { // Letter case
                 count += c - 96;
             } else if (Character.isDigit(c)) { // Number case
-                Node node = new Node(count / this.fieldSize, count % this.fieldSize, c);
+                Node node = new Node(count / this.fieldSize, count % this.fieldSize, Character.getNumericValue(c));
                 this.nodes.add(node);
                 count++;
             } else System.out.println("Error");
@@ -29,7 +30,7 @@ public class Game {
     private void findNodeEast(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getX() == this.nodes.get(i).getX()) {
-                this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.HORIZONTAL));
+                this.bridges.add(new Bridge(node, this.nodes.get(i), null, Bridge.Direction.HORIZONTAL));
                 return; // TODO geen void maar return bridge
             }
         }
@@ -39,7 +40,7 @@ public class Game {
     private void findNodeSouth(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
             if (node.getY() == this.nodes.get(i).getY()) {
-                this.bridges.add(new Bridge(node, this.nodes.get(i), Bridge.Direction.VERTICAL));
+                this.bridges.add(new Bridge(node, this.nodes.get(i), null, Bridge.Direction.VERTICAL));
                 return; // TODO geen void maar return bridge
             }
         }
@@ -51,6 +52,18 @@ public class Game {
 
     public ArrayList<Bridge> getBridges() {
         return this.bridges;
+    }
+
+    // Sets bridges based on solution of SMT solver
+    public void setBridgeWeights(ArrayList<BigInteger> solution) {
+        if (solution.size() != this.bridges.size()) {
+            System.out.println("Solution error");
+        }
+        else {
+            for (int i = 0; i < this.bridges.size(); i++) {
+                this.bridges.get(i).setWeight(solution.get(i));
+            }
+        }
     }
 
     public void printGame() { // TODO tostring
@@ -68,7 +81,35 @@ public class Game {
         }
 
         // Fill field with bridges (solution)
-        // TODO
+        for (Bridge b : this.bridges) {
+            if (b.getWeight().intValue() == 1) {
+                if (b.getDirection() == Bridge.Direction.HORIZONTAL) {
+                    System.out.println(b.getA().getX());
+                    System.out.println(b.getA().getY());
+                    System.out.println(b.getB().getX());
+                    System.out.println(b.getB().getY());
+                    System.out.println();
+                    for (int i = b.getA().getX() + 1; i < b.getB().getX(); i++) {
+
+                        field[i][b.getA().getY()] = '-';
+                    }
+                } else if (b.getDirection() == Bridge.Direction.VERTICAL) {
+                    for (int i = b.getA().getY() + 1; i < b.getB().getY(); i++) {
+                        field[b.getA().getX()][i] = '|';
+                    }
+                }
+            } else if (b.getWeight().intValue() == 2) {
+                if (b.getDirection() == Bridge.Direction.HORIZONTAL) {
+                    for (int i = b.getA().getX() + 1; i < b.getB().getX(); i++) {
+                        field[i][b.getA().getY()] = '=';
+                    }
+                } else if (b.getDirection() == Bridge.Direction.VERTICAL) {
+                    for (int i = b.getA().getY() + 1; i < b.getB().getY(); i++) {
+                        field[b.getA().getX()][i] = '2';
+                    }
+                }
+            }
+        }
 
 
         // Print    TODO split print van logica

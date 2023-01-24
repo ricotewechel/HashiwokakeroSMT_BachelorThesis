@@ -1,33 +1,39 @@
+import java.math.BigInteger;
+
 public class Bridge {
     private final Node a;
     private final Node b;
-    private int amount;
+    private BigInteger weight;
     public enum Direction {
         HORIZONTAL,
         VERTICAL
     }
     private final Direction direction;
 
-    public Bridge(Node a, Node b, Direction d) {
+    public Bridge(Node a, Node b, BigInteger w, Direction d) {
         this.a = a;
         this.b = b;
-        this.amount = 0;
+        this.weight = w;
         this.direction = d;
     }
 
     public Node getA() {
-        return a;
+        return this.a;
     }
 
     public Node getB() {
-        return b;
+        return this.b;
     }
 
-    public int getAmount() {
-        return amount;
+    public BigInteger getWeight() {
+        return this.weight;
+    }
+
+    public void setWeight(BigInteger w) {
+        this.weight = w;
     }
 
     public Direction getDirection() {
-        return direction;
+        return this.direction;
     }
 }
