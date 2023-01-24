@@ -15,7 +15,7 @@ public class Game {
             if (Character.isAlphabetic(c)) { // Letter case
                 count += c - 96;
             } else if (Character.isDigit(c)) { // Number case
-                Node node = new Node(count / this.fieldSize, count % this.fieldSize, Character.getNumericValue(c));
+                Node node = new Node(count % this.fieldSize, count / this.fieldSize, Character.getNumericValue(c));
                 this.nodes.add(node);
                 count++;
             } else System.out.println("Error");
@@ -29,7 +29,7 @@ public class Game {
     // Works because list is sorted from left to right top to bottom
     private void findNodeEast(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
-            if (node.getX() == this.nodes.get(i).getX()) {
+            if (node.getRow() == this.nodes.get(i).getRow()) {
                 this.bridges.add(new Bridge(node, this.nodes.get(i), null, Bridge.Direction.HORIZONTAL));
                 return; // TODO geen void maar return bridge
             }
@@ -39,7 +39,7 @@ public class Game {
     // Works because list is sorted from left to right top to bottom
     private void findNodeSouth(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
-            if (node.getY() == this.nodes.get(i).getY()) {
+            if (node.getCol() == this.nodes.get(i).getCol()) {
                 this.bridges.add(new Bridge(node, this.nodes.get(i), null, Bridge.Direction.VERTICAL));
                 return; // TODO geen void maar return bridge
             }
@@ -70,47 +70,40 @@ public class Game {
         // Define field
         char[][] field = new char[this.fieldSize][this.fieldSize];
         for (int i = 0; i < this.fieldSize; i++) {
-            for (int j = i; j < this.fieldSize; j++) {
+            for (int j = 0; j < this.fieldSize; j++) {
                 field[i][j] = '.';
             }
         }
 
         // Fill field with node values (setup)
         for (Node n : this.nodes) {
-            field[n.getX()][n.getY()] = (char) n.getVal();
+            field[n.getRow()][n.getCol()] = (char) (n.getValue() + '0');
         }
 
-        // Fill field with bridges (solution)
+        // Fill field with bridges (solution)   TODO dit wil je eigenlijk met graphics
         for (Bridge b : this.bridges) {
             if (b.getWeight().intValue() == 1) {
                 if (b.getDirection() == Bridge.Direction.HORIZONTAL) {
-                    System.out.println(b.getA().getX());
-                    System.out.println(b.getA().getY());
-                    System.out.println(b.getB().getX());
-                    System.out.println(b.getB().getY());
-                    System.out.println();
-                    for (int i = b.getA().getX() + 1; i < b.getB().getX(); i++) {
-
-                        field[i][b.getA().getY()] = '-';
+                    for (int i = b.getA().getCol() + 1; i < b.getB().getCol(); i++) {
+                        field[b.getA().getRow()][i] = '─';
                     }
                 } else if (b.getDirection() == Bridge.Direction.VERTICAL) {
-                    for (int i = b.getA().getY() + 1; i < b.getB().getY(); i++) {
-                        field[b.getA().getX()][i] = '|';
+                    for (int i = b.getA().getRow() + 1; i < b.getB().getRow(); i++) {
+                        field[i][b.getA().getCol()] = '│';
                     }
                 }
             } else if (b.getWeight().intValue() == 2) {
                 if (b.getDirection() == Bridge.Direction.HORIZONTAL) {
-                    for (int i = b.getA().getX() + 1; i < b.getB().getX(); i++) {
-                        field[i][b.getA().getY()] = '=';
+                    for (int i = b.getA().getCol() + 1; i < b.getB().getCol(); i++) {
+                        field[b.getA().getRow()][i] = '═';
                     }
                 } else if (b.getDirection() == Bridge.Direction.VERTICAL) {
-                    for (int i = b.getA().getY() + 1; i < b.getB().getY(); i++) {
-                        field[b.getA().getX()][i] = '2';
+                    for (int i = b.getA().getRow() + 1; i < b.getB().getRow(); i++) {
+                        field[i][b.getA().getCol()] = '‖';
                     }
                 }
             }
         }
-
 
         // Print    TODO split print van logica
         for (int i = 0; i < this.fieldSize; i++) {

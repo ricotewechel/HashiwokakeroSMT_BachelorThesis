@@ -15,18 +15,16 @@ public class Main {
         Game game1 = new Game(7, "4d2b1b4a26b3m1c3c3c2d3");
         Game game2 = new Game(7, "a4d32a4b3b3g4a2c2c3g13d2a");
 
-        for (Bridge bridge : game1.getBridges()) {
-            System.out.print(bridge.getA().getX());
-            System.out.print(' ');
-            System.out.print(bridge.getA().getY());
-            System.out.print('\t');
-            System.out.print('\t');
-            System.out.print(bridge.getB().getX());
-            System.out.print(' ');
-            System.out.println(bridge.getB().getY());
-        }
-
-
+//        for (Bridge bridge : game1.getBridges()) {
+//            System.out.print(bridge.getA().getCol());
+//            System.out.print(' ');
+//            System.out.print(bridge.getA().getRow());
+//            System.out.print('\t');
+//            System.out.print('\t');
+//            System.out.print(bridge.getB().getCol());
+//            System.out.print(' ');
+//            System.out.println(bridge.getB().getRow());
+//        }
 
         Configuration config = Configuration.fromCmdLineArguments(args);    // TODO class solver
         LogManager logger = BasicLogManager.create(config);
@@ -44,7 +42,7 @@ public class Main {
             variables.add(imgr.makeVariable(Integer.toString(i)));
         }
 
-        // Bridges are either non-existent, single, or double
+        // Constraint 1: Bridges are either non-existent, single, or double
         ArrayList<BooleanFormula> bridgesHaveCorrectSizesList = new ArrayList<>();
         for (NumeralFormula.IntegerFormula v : variables) {
             bridgesHaveCorrectSizesList.add(
@@ -56,22 +54,23 @@ public class Main {
         }
         BooleanFormula bridgesHaveCorrectSizesConstraint = bmgr.and(bridgesHaveCorrectSizesList);
 
-        // Bridges satisfy nodes
+        // Constraint 2: Node values are satisfied by bridge endpoints
         ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
         for (Node n : game1.getNodes()) {
             NumeralFormula.IntegerFormula ctr = imgr.makeNumber(0);
             for (int i = 0; i < variables.size(); i++) {
-                if (game1.getBridges().get(i).getA().getX() == n.getX() && game1.getBridges().get(i).getA().getY() == n.getY()
-                        || game1.getBridges().get(i).getB().getX() == n.getX() && game1.getBridges().get(i).getB().getY() == n.getY()) {
+                if (game1.getBridges().get(i).getA().getCol() == n.getCol() && game1.getBridges().get(i).getA().getRow() == n.getRow()
+                        || game1.getBridges().get(i).getB().getCol() == n.getCol() && game1.getBridges().get(i).getB().getRow() == n.getRow()) {
                     ctr = imgr.add(ctr, variables.get(i)); // ctr = sum of amount of bridge endpoints (including weight) corresponding to one node
                 }
             }
             nodesSatisfiedList.add(
-                    imgr.equal(ctr, imgr.makeNumber(n.getVal()))
+                    imgr.equal(ctr, imgr.makeNumber(n.getValue()))
             );
         }
         BooleanFormula nodesSatisfiedConstraint = bmgr.and(nodesSatisfiedList);
 
+        // Constraint 3: Bridges don't cross
 
 
         // Solve with SMT solver
@@ -105,7 +104,6 @@ public class Main {
 //        }
 
         game1.setBridgeWeights(solution);
-
         game1.printGame();
 //        System.out.println();
 //        game2.printGame();

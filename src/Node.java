@@ -1,26 +1,26 @@
 public class Node{
-    private final int x;
-    private final int y;
+    private final int col;
+    private final int row;
     private final int value;
 
-    public Node(int xCoord, int yCoord, int value) {
-        this.x = xCoord;
-        this.y = yCoord;
+    public Node(int col, int row, int value) {
+        this.col = col;
+        this.row = row;
         this.value = value;
     }
 
-    public int getX() {
-        return this.x;
+    public int getCol() {
+        return this.col;
     }
 
-    public int getY() {
-        return this.y;
+    public int getRow() {
+        return this.row;
     }
 
-    public int getVal() { return this.value; }
+    public int getValue() { return this.value; }
 
     @Override
     public String toString() {
-        return (Integer.toString(this.value - 48));
+        return (Integer.toString(this.value));
     }
 }
