@@ -89,12 +89,37 @@ public class Solver {
                                     this.imgr.greaterThan(this.imgr.makeNumber(game.getBridges().get(j).getB().getRow()), this.imgr.makeNumber(game.getBridges().get(i).getB().getRow()))
                             )
                     )));
+                } else if (game.getBridges().get(i).getDirection() == Bridge.Direction.VERTICAL
+                        && game.getBridges().get(j).getDirection() == Bridge.Direction.HORIZONTAL) { // Compare every vertical bridge with all horizontals
+                    bridgesDontCrossList.add(this.bmgr.not(this.bmgr.and( // It should not be the case that all cases below are true
+                            this.bmgr.and( // Vertical bridge exists
+                                    this.imgr.greaterOrEquals(variables.get(i), this.imgr.makeNumber(1)),
+                                    this.imgr.lessOrEquals(variables.get(i), this.imgr.makeNumber(2))
+                            ),
+                            this.bmgr.and( // Horizontal bridge exists
+                                    this.imgr.greaterOrEquals(variables.get(j), this.imgr.makeNumber(1)),
+                                    this.imgr.lessOrEquals(variables.get(j), this.imgr.makeNumber(2))
+                            ),
+                            this.bmgr.and( // y coord of left (and implicitly right) endpoint of hor. bridge is in between y coords of ver. bridge
+                                    this.imgr.greaterThan(this.imgr.makeNumber(game.getBridges().get(j).getA().getRow()), this.imgr.makeNumber(game.getBridges().get(i).getA().getRow())),
+                                    this.imgr.lessThan(this.imgr.makeNumber(game.getBridges().get(j).getA().getRow()), this.imgr.makeNumber(game.getBridges().get(i).getB().getRow()))
+                            ),
+                            this.bmgr.and( // x coord of left endpoint of hor. bridge is left of x coords of ver. bridge
+                                    this.imgr.lessThan(this.imgr.makeNumber(game.getBridges().get(j).getA().getCol()), this.imgr.makeNumber(game.getBridges().get(i).getA().getCol())),
+                                    this.imgr.lessThan(this.imgr.makeNumber(game.getBridges().get(j).getA().getCol()), this.imgr.makeNumber(game.getBridges().get(i).getB().getCol()))
+                            ),
+                            this.bmgr.and( // x coord of right endpoint of hor. bridge is right of x coords of ver. bridge
+                                    this.imgr.greaterThan(this.imgr.makeNumber(game.getBridges().get(j).getB().getCol()), this.imgr.makeNumber(game.getBridges().get(i).getA().getCol())),
+                                    this.imgr.greaterThan(this.imgr.makeNumber(game.getBridges().get(j).getB().getCol()), this.imgr.makeNumber(game.getBridges().get(i).getB().getCol()))
+                            )
+                    )));
                 }
             }
         }
         BooleanFormula bridgesDontCrossConstraint = this.bmgr.and(bridgesDontCrossList);
 
         // Constraint 4: All nodes are strongly connected
+
 
         // Solve with SMT solver
         Model model = null;
