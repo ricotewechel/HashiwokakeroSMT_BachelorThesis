@@ -20,6 +20,12 @@ public class Node{
     public int getValue() { return this.value; }
 
     public String toString() {
-        return (Integer.toString(this.value));
+        return (Integer.toString(this.col) + '\t' + this.row + '\t' + this.value);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Node node)) return false;
+        return this.col == node.col && this.row == node.row && this.value == node.value;
     }
 }

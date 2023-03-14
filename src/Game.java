@@ -60,6 +60,26 @@ public class Game {
         return this.bridges;
     }
 
+    // Returns all bridges connected to a node, regardless of weight
+    public ArrayList<Bridge> findNeighbors(Node node) {
+        ArrayList<Bridge> temp = new ArrayList<>();
+        for (Bridge b : this.bridges) {
+            if (b.getA().equals(node) && b.getDirection() == Bridge.Direction.HORIZONTAL) { // East neighbor
+                temp.add(b);
+            }
+            else if (b.getA().equals(node) && b.getDirection() == Bridge.Direction.VERTICAL) { // South neighbor
+                temp.add(b);
+            }
+            else if (b.getB().equals(node) && b.getDirection() == Bridge.Direction.HORIZONTAL) { // West neighbor
+                temp.add(b);
+            }
+            else if (b.getB().equals(node) && b.getDirection() == Bridge.Direction.VERTICAL) { // North neighbor
+                temp.add(b);
+            }
+        }
+        return temp;
+    }
+
     // Sets bridges based on solution of SMT solver
     public void setBridgeWeights(ArrayList<BigInteger> solution) {
         if (solution.size() != this.bridges.size()) {
@@ -123,4 +143,6 @@ public class Game {
         }
         return s.toString();
     }
+
+    // TODO solution check function
 }
