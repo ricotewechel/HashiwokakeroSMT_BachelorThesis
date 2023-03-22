@@ -25,7 +25,8 @@ public class Node{
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Node node)) return false;
+        if (!(obj instanceof Node node))
+            return false;
         return this.col == node.col && this.row == node.row && this.value == node.value;
     }
 }
