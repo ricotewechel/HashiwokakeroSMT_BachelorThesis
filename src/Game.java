@@ -1,5 +1,3 @@
-import scala.Int;
-
 import java.math.BigInteger;
 import java.util.*;
 

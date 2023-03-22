@@ -7,8 +7,6 @@ import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 public class Solver {
     private final SolverContext context;
@@ -259,37 +257,8 @@ public class Solver {
         }
 
     }
-
 }
 
 
-//    private int countNodes(Game game, ArrayList<NumeralFormula.IntegerFormula> variables) { // TODO mss subcomp
-//        ArrayList<Node> queue = new ArrayList<>();
-//        Set<Node> visited = new HashSet<>();
-//        Node start = game.getNodes().get(0);
-//        queue.add(start);
-//        int ctr = 0;
-//
-//        while (!queue.isEmpty()) {
-//            Node node = queue.remove(0);
-//            for (int i = 0; i < game.getBridges().size(); i++) {
-//                if (game.getBridges().get(i).getA().equals(node)) {
-//                    Node temp = game.getBridges().get(i).getB();
-//                    if (!visited.contains(temp)) {
-//                        visited.add(temp);
-//                        queue.add(temp);
-//                        ctr++;
-//                    }
-//                } else if (game.getBridges().get(i).getB().equals(node)) {
-//                    Node temp = game.getBridges().get(i).getA();
-//                    if (!visited.contains(temp)) {
-//                        visited.add(temp);
-//                        queue.add(temp);
-//                        ctr++;
-//                    }
-//                }
-//            }
-//        }
-//        return ctr;
-//    }
+
 
