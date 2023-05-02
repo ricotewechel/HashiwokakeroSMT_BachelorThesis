@@ -35,17 +35,17 @@ public class Game {
 
         this.fieldSize = Integer.parseInt(dimensions[0]);
         this.field = new char[this.fieldSize][this.fieldSize];
-        ArrayList<Node> temp = new ArrayList<>();
+        ArrayList<Node> nodeList = new ArrayList<>();
         int count = 0;
         for (char c : parts[1].toCharArray()) { // Decode puzzle
             if (Character.isAlphabetic(c)) // Letter case
                 count += c - 96;
             else if (Character.isDigit(c)) { // Number case
-                temp.add(new Node(count % this.fieldSize, count / this.fieldSize, Character.getNumericValue(c)));
+                nodeList.add(new Node(count % this.fieldSize, count / this.fieldSize, Character.getNumericValue(c)));
                 count++;
             } else System.out.println("Invalid puzzle encoding");
         }
-        return temp;
+        return nodeList;
     }
 
     // Works because list is sorted from left to right top to bottom

@@ -77,14 +77,14 @@ public class Solver {
         for (int i = 0; i < (game.getNodes().size()); i++) {
             for (int j = 0; j < (game.getNodes().size()); j++) {
                 for (int k = 1; k < (game.getBridges().size()); k++) {
-                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("C" + i + "," + j + "," + k);
+                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("C" + i + "," + j + "," + k); // TODO i,j == j,i
                 }
             }
         }
     }
 
 
-    // Constraint 1: Bridges are either non-existent, single, or double
+    // Constraint 3: Bridges are either non-existent, single, or double
     private BooleanFormula validBridgeSizesConstraint() {
         ArrayList<BooleanFormula> validBridgeSizesList = new ArrayList<>();
         for (NumeralFormula.IntegerFormula v : this.bridgeVariables) {
@@ -99,25 +99,7 @@ public class Solver {
     }
 
 
-    // Constraint 2: Node values are satisfied by bridge endpoints
-    private BooleanFormula nodesSatisfiedConstraint(Game game) {
-        ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
-        for (Node n : game.getNodes()) {
-            NumeralFormula.IntegerFormula ctr = this.imgr.makeNumber(0);
-            for (int i = 0; i < this.bridgeVariables.length; i++) {
-                if (game.getBridges().get(i).getA().equals(n) || game.getBridges().get(i).getB().equals(n)) {
-                    ctr = this.imgr.add(ctr, this.bridgeVariables[i]); // ctr = sum of amount of bridge endpoints (including weight) on one node
-                }
-            }
-            nodesSatisfiedList.add(
-                    this.imgr.equal(ctr, this.imgr.makeNumber(n.getValue()))
-            );
-        }
-        return this.bmgr.and(nodesSatisfiedList);
-    }
-
-
-    // Constraint 3: Bridges don't cross
+    // Constraint 4: Bridges don't cross
     private BooleanFormula bridgesDontCrossConstraint(Game game) {
         ArrayList<BooleanFormula> bridgesDontCrossList = new ArrayList<>();
         for (int i = 0; i < this.bridgeVariables.length; i++) {
@@ -150,7 +132,25 @@ public class Solver {
     }
 
 
-    // Constraint 4: Everything is strongly connected
+    // Constraint 5: Node values are satisfied by bridge endpoints
+    private BooleanFormula nodesSatisfiedConstraint(Game game) {
+        ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
+        for (Node n : game.getNodes()) {
+            NumeralFormula.IntegerFormula ctr = this.imgr.makeNumber(0);
+            for (int i = 0; i < this.bridgeVariables.length; i++) {
+                if (game.getBridges().get(i).getA().equals(n) || game.getBridges().get(i).getB().equals(n)) {
+                    ctr = this.imgr.add(ctr, this.bridgeVariables[i]); // ctr = sum of amount of bridge endpoints (including weight) on one node
+                }
+            }
+            nodesSatisfiedList.add(
+                    this.imgr.equal(ctr, this.imgr.makeNumber(n.getValue()))
+            );
+        }
+        return this.bmgr.and(nodesSatisfiedList);
+    }
+
+
+    // Constraint 6: Everything is strongly connected
     BooleanFormula nodesConnectedConstraint(Game game) {
         ArrayList<BooleanFormula> everythingConnectedList = new ArrayList<>();
 
@@ -236,6 +236,7 @@ public class Solver {
         );
     }
 
+
     private void printConnectionVariables(Game game, Model model) {
         boolean[][][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
         for (int i = 0; i < (game.getNodes().size()); i++) {
@@ -255,7 +256,6 @@ public class Solver {
                 }
             }
         }
-
     }
 }
 
