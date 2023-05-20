@@ -8,14 +8,14 @@ import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
 
-public class Solver {
+public class SmartSolver {
     private final SolverContext context;
     private final BooleanFormulaManager bmgr;
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[] bridgeVariables;
     private BooleanFormula[][][] connectionVariables;
 
-    public Solver(String[] args) throws InvalidConfigurationException { // TODO implement Solver as something that takes Class Encoding as argument
+    public SmartSolver(String[] args) throws InvalidConfigurationException {
         Configuration config = Configuration.fromCmdLineArguments(args);
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();
@@ -36,8 +36,8 @@ public class Solver {
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
             prover.addConstraint(this.validBridgeSizesConstraint());
-            prover.addConstraint(this.nodesSatisfiedConstraint(game));
             prover.addConstraint(this.bridgesDontCrossConstraint(game));
+            prover.addConstraint(this.nodesSatisfiedConstraint(game));
             prover.addConstraint(this.nodesConnectedConstraint(game));
 
             boolean isUnsat = prover.isUnsat();
@@ -57,7 +57,7 @@ public class Solver {
         }
 
         game.setBridgeWeights(solution);
-        game.fillField();
+        game.fillFieldImproved();
 
 //        this.printConnectionVariables(game, model);
     }
@@ -68,7 +68,7 @@ public class Solver {
         // Indices of these variables match directly with the indices in game.bridges
         this.bridgeVariables = new NumeralFormula.IntegerFormula[game.getBridges().size()];
         for (int i = 0; i < (game.getBridges().size()); i++) {
-            this.bridgeVariables[i] = this.imgr.makeVariable("B" + i);
+            this.bridgeVariables[i] = this.imgr.makeVariable("B" + i); // TODO change B name
         }
 
         // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
@@ -77,7 +77,7 @@ public class Solver {
         for (int i = 0; i < (game.getNodes().size()); i++) {
             for (int j = 0; j < (game.getNodes().size()); j++) {
                 for (int k = 1; k < (game.getBridges().size()); k++) {
-                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("C" + i + "," + j + "," + k); // TODO i,j == j,i
+                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("C" + i + "," + j + "," + k); // TODO i,j == j,i and change C name
                 }
             }
         }

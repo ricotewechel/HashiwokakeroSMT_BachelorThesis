@@ -7,20 +7,27 @@ public class Game {
     private final ArrayList<Node> nodes;
     private final ArrayList<Bridge> bridges = new ArrayList<>();
 
-    public Game(String encoding) {
-        this.nodes = parseEncoding(encoding);
-        for (Node node : this.nodes) { // Determine all possible bridges
-            Bridge east = this.findBridgeEast(node);
-            if (east != null)
-                this.bridges.add(east);
-            Bridge south = this.findBridgeSouth(node);
-            if (south != null)
-                this.bridges.add(south);
+    public Game(String encoding, String id) {
+        this.nodes = parseID(id);
+        if (encoding.equals("improved")) {
+            System.out.println("Trying to solve puzzle with improved encoding...");
+            for (Node node : this.nodes) { // Determine all possible bridges
+                Bridge east = this.findBridgeEast(node);
+                if (east != null)
+                    this.bridges.add(east);
+                Bridge south = this.findBridgeSouth(node);
+                if (south != null)
+                    this.bridges.add(south);
+            }
         }
+        else if (encoding.equals("naive")) {
+            System.out.println("Trying to solve puzzle with naive encoding...");
+        }
+        else throw new RuntimeException("Invalid encoding option");
     }
 
     // Parses the url suffix. Assumes a valid encoding is given
-    private ArrayList<Node> parseEncoding (String encoding) {
+    private ArrayList<Node> parseID (String encoding) {
         String[] parts = encoding.split(":");
         if (parts[0].endsWith("L"))
             throw new RuntimeException("Loops may not be prohibited");
@@ -41,13 +48,26 @@ public class Game {
             if (Character.isAlphabetic(c)) // Letter case
                 count += c - 96;
             else if (Character.isDigit(c)) { // Number case
-                nodeList.add(new Node(count % this.fieldSize, count / this.fieldSize, Character.getNumericValue(c)));
+                nodeList.add(new Node(count / this.fieldSize, count % this.fieldSize, Character.getNumericValue(c)));
                 count++;
             } else System.out.println("Invalid puzzle encoding");
         }
         return nodeList;
     }
 
+    public ArrayList<Node> getNodes() {
+        return this.nodes;
+    }
+
+    public int getFieldSize() {
+        return this.fieldSize;
+    }
+
+    public ArrayList<Bridge> getBridges() {
+        return this.bridges;
+    }
+
+    // For improved encoding only
     // Works because list is sorted from left to right top to bottom
     private Bridge findBridgeEast(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
@@ -57,6 +77,7 @@ public class Game {
         return null;
     }
 
+    // For improved encoding only
     // Works because list is sorted from left to right top to bottom
     private Bridge findBridgeSouth(Node node) {
         for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
@@ -66,14 +87,7 @@ public class Game {
         return null;
     }
 
-    public ArrayList<Node> getNodes() {
-        return this.nodes;
-    }
-
-    public ArrayList<Bridge> getBridges() {
-        return this.bridges;
-    }
-
+    // For improved encoding only
     // Returns all bridges connected to a node, regardless of weight
     public ArrayList<Bridge> getBridgesFrom(Node node) {
         ArrayList<Bridge> temp = new ArrayList<>();
@@ -84,6 +98,7 @@ public class Game {
         return temp;
     }
 
+    // For improved encoding only
     // Sets bridges based on solution of SMT solver
     public void setBridgeWeights(ArrayList<BigInteger> solution) {
         if (solution.size() != this.bridges.size())
@@ -95,7 +110,8 @@ public class Game {
         }
     }
 
-    public void fillField() {
+    // For improved encoding only
+    public void fillFieldImproved() {
         // Fill field with node values (setup)
         for (Node n : this.nodes) {
             this.field[n.getRow()][n.getCol()] = (char) (n.getValue() + '0');
@@ -131,6 +147,26 @@ public class Game {
             for (int j = 0; j < this.fieldSize; j++) {
                 if (this.field[i][j] == '\0')
                     this.field[i][j] = ' ';
+            }
+        }
+    }
+
+    public void fillFieldNaive(BigInteger[][] solution) {
+        HashMap<BigInteger, Character> mapping = new HashMap<>() {{
+            put(BigInteger.valueOf(0), ' ');
+            put(BigInteger.valueOf(1), '─');
+            put(BigInteger.valueOf(2), '═');
+            put(BigInteger.valueOf(3), '|');
+            put(BigInteger.valueOf(4), '‖');
+        }};
+
+        int n = 0;
+        for (int i = 0; i < this.fieldSize; i++) {
+            for (int j = 0; j < this.fieldSize; j++) {
+                if (solution[i][j].equals(BigInteger.valueOf(5))) {
+                    this.field[i][j] = (char) (this.nodes.get(n).getValue() + '0');
+                    n++;
+                } else this.field[i][j] = mapping.get(solution[i][j]);
             }
         }
     }

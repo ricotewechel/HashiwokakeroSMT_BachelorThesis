@@ -3,9 +3,9 @@ public class Node{
     private final int row;
     private final int value;
 
-    public Node(int col, int row, int value) {
-        this.col = col;
+    public Node(int row, int col, int value) {
         this.row = row;
+        this.col = col;
         this.value = value;
     }
 
@@ -27,6 +27,6 @@ public class Node{
     public boolean equals(Object obj) {
         if (!(obj instanceof Node node))
             return false;
-        return this.col == node.col && this.row == node.row && this.value == node.value;
+        return this.col == node.col && this.row == node.row;
     }
 }
