@@ -8,12 +8,12 @@ import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
 import java.util.*;
 
-public class NaiveSolver {
+public class GridSolver {
     private final SolverContext context;
     private final BooleanFormulaManager bmgr;
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[][] fieldVariables;
-    public NaiveSolver(String[] args) throws InvalidConfigurationException {
+    public GridSolver(String[] args) throws InvalidConfigurationException {
         Configuration config = Configuration.fromCmdLineArguments(args);
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();
@@ -36,7 +36,6 @@ public class NaiveSolver {
             prover.addConstraint(validCellsConstraint(game));
             prover.addConstraint(nodesConstraint(game));
             prover.addConstraint(neighborConstraint(game));
-//            System.out.println(nodesSatisfiedConstraint(game));
             prover.addConstraint(nodesSatisfiedConstraint(game));
 
             boolean isUnsat = prover.isUnsat();
@@ -61,6 +60,30 @@ public class NaiveSolver {
     }
 
 
+    private enum Direction {
+        NORTH,
+        EAST,
+        SOUTH,
+        WEST
+    }
+
+    // Retrieves all directions that have neighbors
+    private ArrayList<Direction> getPossibleNeighbors(Game game, int row, int col) {
+        ArrayList<Direction> directions = new ArrayList<>(
+                Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
+        );
+        if (row == 0)
+            directions.remove(Direction.NORTH);
+        if (col == game.getFieldSize()-1)
+            directions.remove(Direction.EAST);
+        if (row == game.getFieldSize()-1)
+            directions.remove(Direction.SOUTH);
+        if (col == 0)
+            directions.remove(Direction.WEST);
+        return directions;
+    }
+
+
     private void createVariables(Game game) {
         // Create variables per field cell
         this.fieldVariables = new NumeralFormula.IntegerFormula[game.getFieldSize()][game.getFieldSize()];
@@ -70,7 +93,6 @@ public class NaiveSolver {
             }
         }
     }
-
 
     // Cells can either be empty, single horizontal, double horizontal, single vertical, double vertical, or nodes
     // Respectively encoded as 0, 1, 2, 3, 4, 5
@@ -120,28 +142,7 @@ public class NaiveSolver {
     }
 
 
-    private enum Direction {
-        NORTH,
-        EAST,
-        SOUTH,
-        WEST
-    }
-
-    private ArrayList<Direction> getPossibleNeighbors(Game game, int row, int col) {
-        ArrayList<Direction> directions = new ArrayList<>(
-                Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
-        );
-        if (row == 0)
-            directions.remove(Direction.NORTH);
-        if (col == game.getFieldSize()-1)
-            directions.remove(Direction.EAST);
-        if (row == game.getFieldSize()-1)
-            directions.remove(Direction.SOUTH);
-        if (col == 0)
-            directions.remove(Direction.WEST);
-        return directions;
-    }
-
+    // Creates restrictions for possible neighbors
     private ArrayList<BooleanFormula> getNeighborRestrictionList(Game game, int i, int j, int piece) {
         ArrayList<BooleanFormula> neighborRestrictionList = new ArrayList<>();
         if (piece == 1 || piece == 2) { // ─ or ═
@@ -241,6 +242,7 @@ public class NaiveSolver {
     }
 
 
+    // All nodes must have neighboring bridge pieces that add up to node value.
     private BooleanFormula nodesSatisfiedConstraint(Game game) {
         ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
         for (Node n : game.getNodes()) {

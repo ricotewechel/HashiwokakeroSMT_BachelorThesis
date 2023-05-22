@@ -8,14 +8,14 @@ import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
 
-public class SmartSolver {
+public class GraphSolver {
     private final SolverContext context;
     private final BooleanFormulaManager bmgr;
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[] bridgeVariables;
     private BooleanFormula[][][] connectionVariables;
 
-    public SmartSolver(String[] args) throws InvalidConfigurationException {
+    public GraphSolver(String[] args) throws InvalidConfigurationException {
         Configuration config = Configuration.fromCmdLineArguments(args);
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();

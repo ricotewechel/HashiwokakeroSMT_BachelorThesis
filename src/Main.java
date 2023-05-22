@@ -3,55 +3,55 @@ import org.sosy_lab.java_smt.api.SolverException;
 
 public class Main {
     public static void main(String[] args) throws InvalidConfigurationException, SolverException {
-        SmartSolver smartSolver = new SmartSolver(args);
-        NaiveSolver naiveSolver = new NaiveSolver(args);
+        GraphSolver graphSolver = new GraphSolver(args);
+        GridSolver gridSolver = new GridSolver(args);
 
         // Game 0
         Game game0A = new Game("improved", "3x3m2:2a2c2a2");
-        smartSolver.solveGame(game0A);
+        graphSolver.solveGame(game0A);
         System.out.println(game0A);
         Game game0B = new Game("naive", "3x3m2:2a2c2a2");
-        naiveSolver.solveGame(game0B);
+        gridSolver.solveGame(game0B);
         System.out.println(game0B);
 
         // Game 1
         Game game1A = new Game("improved", "7x7m2:4d2b1b4a26b3m1c3c3c2d3");
-        smartSolver.solveGame(game1A);
+        graphSolver.solveGame(game1A);
         System.out.println(game1A);
         Game game1B = new Game("naive", "7x7m2:4d2b1b4a26b3m1c3c3c2d3");
-        naiveSolver.solveGame(game1B);
+        gridSolver.solveGame(game1B);
         System.out.println(game1B);
 
         // Game 2
         Game game2A = new Game("improved", "7x7m2:a4d32a4b3b3g4a2c2c3g13d2a");
-        smartSolver.solveGame(game2A);
+        graphSolver.solveGame(game2A);
         System.out.println(game2A);
         Game game2B = new Game("naive", "7x7m2:a4d32a4b3b3g4a2c2c3g13d2a");
-        naiveSolver.solveGame(game2B);
+        gridSolver.solveGame(game2B);
         System.out.println(game2B);
 
         // Game 3
         Game game3A = new Game("improved", "15x15m2:2d4c4b5a4g1e2b2a4a6e2j2f4h2g1y2c2a5g4a3s4t3a3a2d2l1c3b3c2o1a2f4d4a3");
-        smartSolver.solveGame(game3A);
+        graphSolver.solveGame(game3A);
         System.out.println(game3A);
         Game game3B = new Game("naive", "15x15m2:2d4c4b5a4g1e2b2a4a6e2j2f4h2g1y2c2a5g4a3s4t3a3a2d2l1c3b3c2o1a2f4d4a3");
-        naiveSolver.solveGame(game3B);
+        gridSolver.solveGame(game3B);
         System.out.println(game3B);
 
         // Game 4
         Game game4A = new Game("improved", "15x15m2:3h4i1a3a2b3b2b2d2e2l2e6a5a2b4c3t2a1b2b1d4d5f34i3b2p6m4a1b1c5c4r2f5b2c4k6a3");
-        smartSolver.solveGame(game4A);
+        graphSolver.solveGame(game4A);
         System.out.println(game4A);
         Game game4B = new Game("naive", "15x15m2:3h4i1a3a2b3b2b2d2e2l2e6a5a2b4c3t2a1b2b1d4d5f34i3b2p6m4a1b1c5c4r2f5b2c4k6a3");
-        naiveSolver.solveGame(game4B);
+        gridSolver.solveGame(game4B);
         System.out.println(game4B);
 
         // Game 5
         Game game5A = new Game("improved", "15x15m2:4c5b5a5d3j3a3g2s2d5b3a4a7a6b4c2f2l2b1b1c3c1o3a6b3b3c2e3c2i4g5b5a2b3d5b1e3c1c2c1a5f42a2a4g2b");
-        smartSolver.solveGame(game5A);
+        graphSolver.solveGame(game5A);
         System.out.println(game5A);
         Game game5B = new Game("naive", "15x15m2:4c5b5a5d3j3a3g2s2d5b3a4a7a6b4c2f2l2b1b1c3c1o3a6b3b3c2e3c2i4g5b5a2b3d5b1e3c1c2c1a5f42a2a4g2b");
-        naiveSolver.solveGame(game5B);
+        gridSolver.solveGame(game5B);
         System.out.println(game5B);
 
 //        // Game 6
