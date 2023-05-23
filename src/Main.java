@@ -54,22 +54,21 @@ public class Main {
         gridSolver.solveGame(game5B);
         System.out.println(game5B);
 
-//        // Game 6
-//        Game game6A = new Game("improved", "30x30m2:a4z4c2a4r5a4a2b2zi4o2e3a4ze3zm2zzzzzd2zb1zd1zzs1b5e4m4v2zj2zb6b7a5k4zp6a3a2b4g1za2m3b2a1a3a2v4c5c5e5a1n1z2f1b3i4a3a2g3o1h1e2b2n1c4b4b14b3d3a1e2a2k");
-//        smartSolver.solveGame(game6A);
-//        System.out.println(game6A);
-//        Game game6B = new Game("naive", "30x30m2:a4z4c2a4r5a4a2b2zi4o2e3a4ze3zm2zzzzzd2zb1zd1zzs1b5e4m4v2zj2zb6b7a5k4zp6a3a2b4g1za2m3b2a1a3a2v4c5c5e5a1n1z2f1b3i4a3a2g3o1h1e2b2n1c4b4b14b3d3a1e2a2k");
-//        naiveSolver.solveGame(game6B);
-//        System.out.println(game6B);
-//
-//        // Game 7
-//        Game game7A = new Game("improved", "30x30m2:3r4a3d2a1b4d3a1a1e5a2c1a4d3ze5n4b2e3b3za2d3g5i3zo2c3b2b2zk1j5h6a4t1k1d1zy4b4d3i2i2v4h8a3k1c2zf1e2b4a1g1g44w5a5h2o3za1ze2d5a4zd3z3c2r6a5a2h1a4m2k3b2f2e4b6c2g3b4d4n4ze3a4b4b3b1a5c3h1g2w5d3");
-//        smartSolver.solveGame(game7A);
-//        System.out.println(game7A);
-//        Game game7B = new Game("naive", "30x30m2:3r4a3d2a1b4d3a1a1e5a2c1a4d3ze5n4b2e3b3za2d3g5i3zo2c3b2b2zk1j5h6a4t1k1d1zy4b4d3i2i2v4h8a3k1c2zf1e2b4a1g1g44w5a5h2o3za1ze2d5a4zd3z3c2r6a5a2h1a4m2k3b2f2e4b6c2g3b4d4n4ze3a4b4b3b1a5c3h1g2w5d3");
-//        naiveSolver.solveGame(game7B);
-//        System.out.println(game7B);
+        // Game 6
+        Game game6A = new Game("improved", "30x30m2:a4z4c2a4r5a4a2b2zi4o2e3a4ze3zm2zzzzzd2zb1zd1zzs1b5e4m4v2zj2zb6b7a5k4zp6a3a2b4g1za2m3b2a1a3a2v4c5c5e5a1n1z2f1b3i4a3a2g3o1h1e2b2n1c4b4b14b3d3a1e2a2k");
+        graphSolver.solveGame(game6A);
+        System.out.println(game6A);
+        Game game6B = new Game("naive", "30x30m2:a4z4c2a4r5a4a2b2zi4o2e3a4ze3zm2zzzzzd2zb1zd1zzs1b5e4m4v2zj2zb6b7a5k4zp6a3a2b4g1za2m3b2a1a3a2v4c5c5e5a1n1z2f1b3i4a3a2g3o1h1e2b2n1c4b4b14b3d3a1e2a2k");
+        gridSolver.solveGame(game6B);
+        System.out.println(game6B);
 
+        // Game 7
+        Game game7A = new Game("improved", "30x30m2:3r4a3d2a1b4d3a1a1e5a2c1a4d3ze5n4b2e3b3za2d3g5i3zo2c3b2b2zk1j5h6a4t1k1d1zy4b4d3i2i2v4h8a3k1c2zf1e2b4a1g1g44w5a5h2o3za1ze2d5a4zd3z3c2r6a5a2h1a4m2k3b2f2e4b6c2g3b4d4n4ze3a4b4b3b1a5c3h1g2w5d3");
+        graphSolver.solveGame(game7A);
+        System.out.println(game7A);
+        Game game7B = new Game("naive", "30x30m2:3r4a3d2a1b4d3a1a1e5a2c1a4d3ze5n4b2e3b3za2d3g5i3zo2c3b2b2zk1j5h6a4t1k1d1zy4b4d3i2i2v4h8a3k1c2zf1e2b4a1g1g44w5a5h2o3za1ze2d5a4zd3z3c2r6a5a2h1a4m2k3b2f2e4b6c2g3b4d4n4ze3a4b4b3b1a5c3h1g2w5d3");
+        gridSolver.solveGame(game7B);
+        System.out.println(game7B);
 
 
 

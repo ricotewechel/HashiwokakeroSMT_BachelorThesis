@@ -68,7 +68,7 @@ public class GraphSolver {
         // Indices of these variables match directly with the indices in game.bridges
         this.bridgeVariables = new NumeralFormula.IntegerFormula[game.getBridges().size()];
         for (int i = 0; i < (game.getBridges().size()); i++) {
-            this.bridgeVariables[i] = this.imgr.makeVariable("B" + i); // TODO change B name
+            this.bridgeVariables[i] = this.imgr.makeVariable("β" + i);
         }
 
         // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
@@ -77,7 +77,7 @@ public class GraphSolver {
         for (int i = 0; i < (game.getNodes().size()); i++) {
             for (int j = 0; j < (game.getNodes().size()); j++) {
                 for (int k = 1; k < (game.getBridges().size()); k++) {
-                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("C" + i + "," + j + "," + k); // TODO i,j == j,i and change C name
+                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("γ" + i + "," + j + "," + k);
                 }
             }
         }
@@ -153,43 +153,40 @@ public class GraphSolver {
     // Constraint 6: Everything is strongly connected
     BooleanFormula nodesConnectedConstraint(Game game) {
         ArrayList<BooleanFormula> everythingConnectedList = new ArrayList<>();
-
-        for (int n1 = 0; n1 < game.getNodes().size(); n1++) {
-            for (int n2 = 0; n2 < game.getNodes().size(); n2++) {
-                for (int i = 1; i < game.getBridges().size(); i++) {
-                    if (n1 == n2) { // C2,2,i <=> True
-                        everythingConnectedList.add(this.areNodesConnectedTrue(n1, n2, i));
-                    } else if (i == 1) { // C1,3,1 <=> x2  or  C1,2,1 <=> False
-                        everythingConnectedList.add(this.areNodesConnectedInOneStep(n1, n2, game));
-                    } else { // C1,3,2 <=> C1,3,1 \/ (x0 /\ C0,3,1) \/ (x2 /\ C3,3,1)
-                        everythingConnectedList.add(this.areNodesConnectedInISteps(n1, n2, i, game));
-                    }
-                    if (i == game.getNodes().size() - 1) { // Cx,y,e-1 <=> True
-                        everythingConnectedList.add(this.areNodesConnectedTrue(n1, n2, i));
-                    }
+        for (int dest = 0; dest < game.getNodes().size(); dest++) {
+            for (int i = 1; i < game.getBridges().size(); i++) {
+                if (0 == dest) { // γ0,0,i <=> True
+                    everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
+                } else if (i == 1) { // γ0,2,1 <=> x1  or  γ0,3,1 <=> False
+                    everythingConnectedList.add(this.areNodesConnectedInOneStep(dest, game));
+                } else { // γ0,3,2 <=> γ0,3,1 \/ (x2 /\ γ0,1,1) \/ (x3 /\ γ0,2,1)
+                    everythingConnectedList.add(this.areNodesConnectedInISteps(dest, i, game));
+                }
+                if (i == game.getNodes().size()-1) { // γ0,x,e-1 <=> True
+                    everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
                 }
             }
         }
         return bmgr.and(everythingConnectedList);
     }
 
-    // Set a C to true (if n1 == n2 (vacuously) or if Cx,y,e-1 (force connectedness))
-    private BooleanFormula areNodesConnectedTrue(int n1, int n2, int i) {
+    // Set a γ to true (if 0 == destination (vacuously) or if γx,y,e-1 (force connectedness))
+    private BooleanFormula areNodesConnectedTrue(int dest, int i) {
         return this.bmgr.equivalence(
-                this.connectionVariables[n1][n2][i],
+                this.connectionVariables[0][dest][i],
                 this.bmgr.makeTrue()
         );
     }
 
-    // Set a C variable equivalent to a direct bridge or to false if not applicable
-    private BooleanFormula areNodesConnectedInOneStep(int n1, int n2, Game game) {
-        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(n1)); // Retrieve bridges connected to n1
+    // Set a γ variable equivalent to a direct bridge or to false if not applicable
+    private BooleanFormula areNodesConnectedInOneStep(int dest, Game game) {
+        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination node
         for (Bridge b : neighbors) {
-            if ((b.getA().equals(game.getNodes().get(n1)) && b.getB().equals(game.getNodes().get(n2))) ||
-                    (b.getA().equals(game.getNodes().get(n2)) && b.getB().equals(game.getNodes().get(n1)))) {
-                // If n1 and n2 form the two bridge endpoints of one of the adjacent bridges
+            if ((b.getA().equals(game.getNodes().get(0)) && b.getB().equals(game.getNodes().get(dest))) ||
+                    (b.getA().equals(game.getNodes().get(dest)) && b.getB().equals(game.getNodes().get(0)))) { // TODO Might not be needed because 0 is always top left
+                // If node 0 and destination node form the two bridge endpoints of one of the adjacent bridges
                 return this.bmgr.equivalence( // Connected in 1 <=> bridge should exist
-                        this.connectionVariables[n1][n2][1],
+                        this.connectionVariables[0][dest][1],
                         this.imgr.greaterThan(
                                 this.bridgeVariables[game.getBridges().indexOf(b)],
                                 this.imgr.makeNumber(0)
@@ -197,42 +194,42 @@ public class GraphSolver {
                 );
             }
         }
-        // If n1 and n2 don't form an adjacent bridge and thus not reachable in 1 step
+        // If node 0 and destination node don't form an adjacent bridge and thus not reachable in 1 step
         return this.bmgr.equivalence(
-                this.connectionVariables[n1][n2][1],
+                this.connectionVariables[0][dest][1],
                 this.bmgr.makeFalse()
         );
     }
 
-    // Set a C variable equivalent to a shorter connection or express in neighbors perspective
-    private BooleanFormula areNodesConnectedInISteps(int n1, int n2, int i, Game game) {
-        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(n1)); // Retrieve bridges connected to n1
-        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ Cn3,n2,i-1)
-        for (Bridge b : neighbors) { // for every neighboring node describe what reaching n2 from there means
-            int n3; // n3 will be the node we will try to reach n2 from in one less step
-            if (game.getNodes().get(n1).equals(b.getA())) {
-                n3 = game.getNodes().indexOf(b.getB()); // n3 should not be n1
-            } else if (game.getNodes().get(n1).equals(b.getB())) {
-                n3 = game.getNodes().indexOf(b.getA()); // n3 should not be n1
-            } else continue; // error (
+    // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
+    private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
+        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
+        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1)
+        for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
+            int n3; // n3 will be the node we will try to reach destination node from in one step
+            if (game.getNodes().get(dest).equals(b.getA())) {
+                n3 = game.getNodes().indexOf(b.getB()); // n3 should not be destination (take the other bridge endpoint)
+            } else if (game.getNodes().get(dest).equals(b.getB())) {
+                n3 = game.getNodes().indexOf(b.getA()); // n3 should not be destination (take the other bridge endpoint)
+            } else continue; // error
             temp.add(
                     this.bmgr.and(
                             this.imgr.greaterThan(
                                     this.bridgeVariables[game.getBridges().indexOf(b)],
                                     imgr.makeNumber(0)
                             ),
-                            this.connectionVariables[n3][n2][i - 1]
+                            this.connectionVariables[0][n3][i-1]
                     )
             );
         }
         BooleanFormula neighborDisjunction = this.bmgr.or(temp); // at least one case should be true
 
         return this.bmgr.equivalence(
-                        this.connectionVariables[n1][n2][i],
-                        this.bmgr.or( // at least one case should be true
-                                this.connectionVariables[n1][n2][i - 1],
-                                neighborDisjunction
-                        )
+                this.connectionVariables[0][dest][i],
+                this.bmgr.or( // at least one case should be true
+                        this.connectionVariables[0][dest][i-1],
+                        neighborDisjunction
+                )
         );
     }
 
