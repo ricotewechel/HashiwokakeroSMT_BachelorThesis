@@ -182,8 +182,7 @@ public class GraphSolver {
     private BooleanFormula areNodesConnectedInOneStep(int dest, Game game) {
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination node
         for (Bridge b : neighbors) {
-            if ((b.getA().equals(game.getNodes().get(0)) && b.getB().equals(game.getNodes().get(dest))) ||
-                    (b.getA().equals(game.getNodes().get(dest)) && b.getB().equals(game.getNodes().get(0)))) { // TODO Might not be needed because 0 is always top left
+            if ((b.getA().equals(game.getNodes().get(0)) && b.getB().equals(game.getNodes().get(dest)))) { // Only need to check one direction since node 0 is always in top left
                 // If node 0 and destination node form the two bridge endpoints of one of the adjacent bridges
                 return this.bmgr.equivalence( // Connected in 1 <=> bridge should exist
                         this.connectionVariables[0][dest][1],

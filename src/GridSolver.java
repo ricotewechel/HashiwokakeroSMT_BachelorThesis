@@ -6,13 +6,15 @@ import org.sosy_lab.common.log.LogManager;
 import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class GridSolver {
     private final SolverContext context;
     private final BooleanFormulaManager bmgr;
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[][] fieldVariables;
+    private BooleanFormula[][][] connectionVariables;
     public GridSolver(String[] args) throws InvalidConfigurationException {
         Configuration config = Configuration.fromCmdLineArguments(args);
         LogManager logger = BasicLogManager.create(config);
@@ -34,14 +36,14 @@ public class GridSolver {
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
             prover.addConstraint(validCellsConstraint(game));
-            prover.addConstraint(nodesConstraint(game));
             prover.addConstraint(neighborConstraint(game));
             prover.addConstraint(nodesSatisfiedConstraint(game));
+            prover.addConstraint(nodesConnectedConstraint(game));
 
             boolean isUnsat = prover.isUnsat();
-                if (!isUnsat) {
+            if (!isUnsat) {
                 model = prover.getModel();
-            };
+            }
         } catch (SolverException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -57,9 +59,12 @@ public class GridSolver {
         }
 
         game.fillFieldNaive(solution);
+
+//        this.printConnectionVariables(game, model);
     }
 
 
+    // Used for neighbor directions
     private enum Direction {
         NORTH,
         EAST,
@@ -67,7 +72,7 @@ public class GridSolver {
         WEST
     }
 
-    // Retrieves all directions that have neighbors
+    // Retrieves all directions that have neighbors. Used in other functions
     private ArrayList<Direction> getPossibleNeighbors(Game game, int row, int col) {
         ArrayList<Direction> directions = new ArrayList<>(
                 Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
@@ -85,23 +90,35 @@ public class GridSolver {
 
 
     private void createVariables(Game game) {
-        // Create variables per field cell
+        // Create variables for each grid cell (each cell can be empty, a node, or a bridge piece)
         this.fieldVariables = new NumeralFormula.IntegerFormula[game.getFieldSize()][game.getFieldSize()];
         for (int i = 0; i < game.getFieldSize(); i++) {
             for (int j = 0; j < game.getFieldSize(); j++) {
-                this.fieldVariables[i][j] = this.imgr.makeVariable("F" + i + "," + j);
+                this.fieldVariables[i][j] = this.imgr.makeVariable("φ" + i + "," + j);
+            }
+        }
+
+        // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
+        // Indices i and j of these variables match directly with the indices in game.nodes
+        this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
+        for (int i = 0; i < (game.getNodes().size()); i++) {
+            for (int j = 0; j < (game.getNodes().size()); j++) {
+                for (int k = 1; k < (game.getBridges().size()); k++) {
+                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("γ" + i + "," + j + "," + k);
+                }
             }
         }
     }
 
-    // Cells can either be empty, single horizontal, double horizontal, single vertical, double vertical, or nodes
-    // Respectively encoded as 0, 1, 2, 3, 4, 5
-    // Corners may not be bridge pieces, edges may only be bridge pieces along the axis
+
+    // Cells can either be empty, single horizontal, double horizontal, single vertical, double vertical, or nodes respectively encoded as 0, 1, 2, 3, 4, 5
+    // Corners may not be bridge pieces, edges may only be bridge pieces along the axis. Only cells that have same coordinates as nodes list may be nodes
     private BooleanFormula validCellsConstraint(Game game) {
         ArrayList<BooleanFormula> validCellsList = new ArrayList<>();
 
         for (int row = 0; row < game.getFieldSize(); row++) {
             for (int col = 0; col < game.getFieldSize(); col++) {
+                // Cells encoding must range from 0 to 5 (e ─ ═ | ‖ o)
                 ArrayList<BooleanFormula> cellValidList = new ArrayList<>();
                 cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))); // e
                 cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(5))); // o
@@ -114,35 +131,45 @@ public class GridSolver {
                     cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4))); // ‖
                 }
                 validCellsList.add(this.bmgr.or(cellValidList));
+
+                // Only cells with same coords as nodes list may be nodes
+                Node n = new Node(row, col, 0);
+                if (game.getNodes().contains(n)) {
+                    validCellsList.add(
+                            this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                    );
+                } else {
+                    validCellsList.add(
+                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
+                    );
+                }
             }
         }
         return this.bmgr.and(validCellsList);
     }
 
 
-    // Set constraints for all input nodes, prohibit other cells from becoming nodes
-    private BooleanFormula nodesConstraint(Game game) {
-        ArrayList<BooleanFormula> nodesList = new ArrayList<>();
+    // Constraint 1 to 4: Bridges must be between two nodes, must be vertical or horizontal, must be single or double, and may not cross
+    private BooleanFormula neighborConstraint(Game game) {
+        ArrayList<BooleanFormula> NeighborList = new ArrayList<>();
         for (int i = 0; i < game.getFieldSize(); i++) {
             for (int j = 0; j < game.getFieldSize(); j++) {
-                Node n = new Node(i, j, 0);
-                if (game.getNodes().contains(n)) {
-                    nodesList.add(
-                            this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(5))
-                    );
-                }
-                else {
-                    nodesList.add(
-                            this.bmgr.not(this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(5)))
+                for (int p = 1; p <= 4; p++) {
+                    NeighborList.add(
+                            this.bmgr.implication(
+                                    this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(p)),
+                                    this.bmgr.and(
+                                            getNeighborRestrictionList(game, i, j, p)
+                                    )
+                            )
                     );
                 }
             }
         }
-        return this.bmgr.and(nodesList);
+        return this.bmgr.and(NeighborList);
     }
 
-
-    // Creates restrictions for possible neighbors
+    // Creates restrictions for possible neighbors, used in neighborConstraint()
     private ArrayList<BooleanFormula> getNeighborRestrictionList(Game game, int i, int j, int piece) {
         ArrayList<BooleanFormula> neighborRestrictionList = new ArrayList<>();
         if (piece == 1 || piece == 2) { // ─ or ═
@@ -221,28 +248,8 @@ public class GridSolver {
         return neighborRestrictionList;
     }
 
-    // Bridges must be between two nodes, must be vertical or horizontal, must be single or double, and may not cross
-    private BooleanFormula neighborConstraint(Game game) {
-        ArrayList<BooleanFormula> NeighborList = new ArrayList<>();
-        for (int i = 0; i < game.getFieldSize(); i++) {
-            for (int j = 0; j < game.getFieldSize(); j++) {
-                for (int p = 1; p <= 4; p++) {
-                    NeighborList.add(
-                            this.bmgr.implication(
-                                    this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(p)),
-                                    this.bmgr.and(
-                                            getNeighborRestrictionList(game, i, j, p)
-                                    )
-                            )
-                    );
-                }
-            }
-        }
-        return this.bmgr.and(NeighborList);
-    }
 
-
-    // All nodes must have neighboring bridge pieces that add up to node value.
+    // Constraint 5: All nodes must have neighboring bridge pieces that add up to node value.
     private BooleanFormula nodesSatisfiedConstraint(Game game) {
         ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
         for (Node n : game.getNodes()) {
@@ -329,5 +336,185 @@ public class GridSolver {
             );
         }
         return bmgr.and(nodesSatisfiedList);
+    }
+
+
+    // Constraint 6: Everything is strongly connected
+    BooleanFormula nodesConnectedConstraint(Game game) {
+        ArrayList<BooleanFormula> everythingConnectedList = new ArrayList<>();
+        for (int dest = 0; dest < game.getNodes().size(); dest++) {
+            for (int i = 1; i < game.getBridges().size(); i++) {
+                if (0 == dest) { // γ0,0,i <=> True
+                    everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
+                } else if (i == 1) { // γ0,2,1 <=> x1  or  γ0,3,1 <=> False
+                    everythingConnectedList.add(this.areNodesConnectedInOneStep(dest, game));
+                } else { // γ0,3,2 <=> γ0,3,1 \/ (x2 /\ γ0,1,1) \/ (x3 /\ γ0,2,1)
+                    everythingConnectedList.add(this.areNodesConnectedInISteps(dest, i, game));
+                }
+                if (i == game.getNodes().size()-1) { // γ0,x,e-1 <=> True
+                    everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
+                }
+            }
+        }
+        return bmgr.and(everythingConnectedList);
+    }
+
+    // Set a γ to true (if 0 == destination (vacuously) or if γx,y,e-1 (force connectedness))
+    private BooleanFormula areNodesConnectedTrue(int dest, int i) {
+        return this.bmgr.equivalence(
+                this.connectionVariables[0][dest][i],
+                this.bmgr.makeTrue()
+        );
+    }
+
+    // Set a γ variable equivalent to a direct bridge or to false if not applicable
+    private BooleanFormula areNodesConnectedInOneStep(int dest, Game game) {
+        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(0)); // Retrieve bridges connected to destination node
+        for (Bridge b : neighbors) {
+            if (b.getB().equals(game.getNodes().get(dest)) && b.getB().getRow() == b.getA().getRow()){
+                return this.bmgr.equivalence( // Connected in 1 <=> bridge should exist
+                        this.connectionVariables[0][dest][1],
+                        this.bmgr.or(
+                                this.imgr.equal(
+                                        this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                        this.imgr.makeNumber(3)
+                                ),
+                                this.imgr.equal(
+                                        this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                        this.imgr.makeNumber(4)
+                                )
+                        )
+                );
+            } else if (b.getB().equals(game.getNodes().get(dest)) && b.getB().getCol() == b.getA().getCol()){
+                return this.bmgr.equivalence( // Connected in 1 <=> bridge should exist
+                        this.connectionVariables[0][dest][1],
+                        this.bmgr.or(
+                                this.imgr.equal(
+                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                        this.imgr.makeNumber(1)
+                                ),
+                                this.imgr.equal(
+                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                        this.imgr.makeNumber(2)
+                                )
+                        )
+                );
+            }
+        }
+        // If node 0 and destination node don't form an adjacent bridge and thus not reachable in 1 step
+        return this.bmgr.equivalence(
+                this.connectionVariables[0][dest][1],
+                this.bmgr.makeFalse()
+        );
+    }
+
+    // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
+    private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
+        ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
+        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1)
+        for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
+            int n3; // n3 will be the node we will try to reach destination node from in one step
+            if (game.getNodes().get(dest).equals(b.getA())) { // East or south bridge
+                n3 = game.getNodes().indexOf(b.getB()); // n3 should not be destination (take the other bridge endpoint)
+                if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // East
+                    temp.add(
+                            this.bmgr.and(
+                                    this.bmgr.or(
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                                    this.imgr.makeNumber(1)
+                                            ),
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                                    this.imgr.makeNumber(2)
+                                            )
+                                    ),
+                                    this.connectionVariables[0][n3][i-1]
+                            )
+                    );
+                } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // South
+                    temp.add(
+                            this.bmgr.and(
+                                    this.bmgr.or(
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                                    this.imgr.makeNumber(3)
+                                            ),
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                                    this.imgr.makeNumber(4)
+                                            )
+                                    ),
+                                    this.connectionVariables[0][n3][i-1]
+                            )
+                    );
+                }
+            } else if (game.getNodes().get(dest).equals(b.getB())) { // West or north bridge
+                n3 = game.getNodes().indexOf(b.getA()); // n3 should not be destination (take the other bridge endpoint)
+                if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // West
+                    temp.add(
+                            this.bmgr.and(
+                                    this.bmgr.or(
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
+                                                    this.imgr.makeNumber(1)
+                                            ),
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
+                                                    this.imgr.makeNumber(2)
+                                            )
+                                    ),
+                                    this.connectionVariables[0][n3][i-1]
+                            )
+                    );
+                } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // North
+                    temp.add(
+                            this.bmgr.and(
+                                    this.bmgr.or(
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
+                                                    this.imgr.makeNumber(3)
+                                            ),
+                                            this.imgr.equal(
+                                                    this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
+                                                    this.imgr.makeNumber(4)
+                                            )
+                                    ),
+                                    this.connectionVariables[0][n3][i-1]
+                            )
+                    );
+                }
+            }
+        }
+        BooleanFormula neighborDisjunction = this.bmgr.or(temp); // at least one case should be true
+
+        return this.bmgr.equivalence(
+                this.connectionVariables[0][dest][i],
+                this.bmgr.or( // at least one case should be true
+                        this.connectionVariables[0][dest][i-1],
+                        neighborDisjunction
+                )
+        );
+    }
+
+    private void printConnectionVariables(Game game, Model model) {
+        boolean[][][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
+        for (int i = 0; i < (game.getNodes().size()); i++) {
+            for (int j = 0; j < (game.getNodes().size()); j++) {
+                for (int k = 1; k < (game.getBridges().size()); k++) {
+                    solution2[i][j][k] = model.evaluate(connectionVariables[i][j][k]);
+                }
+            }
+        }
+
+        for (int i = 0; i < (game.getNodes().size()); i++) {
+            for (int j = 0; j < (game.getNodes().size()); j++) {
+                for (int k = 1; k < (game.getBridges().size()); k++) {
+                    System.out.print(connectionVariables[i][j][k]);
+                    System.out.print(": ");
+                    System.out.println(solution2[i][j][k]);
+                }
+            }
+        }
     }
 }
