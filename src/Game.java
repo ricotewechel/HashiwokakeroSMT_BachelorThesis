@@ -7,23 +7,16 @@ public class Game {
     private final ArrayList<Node> nodes;
     private final ArrayList<Bridge> bridges = new ArrayList<>();
 
-    public Game(String encoding, String id) {
+    public Game(String id) {
         this.nodes = parseID(id);
-        if (encoding.equals("improved")) {
-            System.out.println("Trying to solve puzzle with improved encoding...");
-            for (Node node : this.nodes) { // Determine all possible bridges
-                Bridge east = this.findBridgeEast(node);
-                if (east != null)
-                    this.bridges.add(east);
-                Bridge south = this.findBridgeSouth(node);
-                if (south != null)
-                    this.bridges.add(south);
-            }
+        for (Node node : this.nodes) { // Determine all possible bridges
+            Bridge east = this.findBridgeEast(node);
+            if (east != null)
+                this.bridges.add(east);
+            Bridge south = this.findBridgeSouth(node);
+            if (south != null)
+                this.bridges.add(south);
         }
-        else if (encoding.equals("naive")) {
-            System.out.println("Trying to solve puzzle with naive encoding...");
-        }
-        else throw new RuntimeException("Invalid encoding option");
     }
 
     // Parses the url suffix. Assumes a valid encoding is given
@@ -50,9 +43,27 @@ public class Game {
             else if (Character.isDigit(c)) { // Number case
                 nodeList.add(new Node(count / this.fieldSize, count % this.fieldSize, Character.getNumericValue(c)));
                 count++;
-            } else System.out.println("Invalid puzzle encoding");
+            } else throw new RuntimeException("Invalid puzzle encoding");
         }
         return nodeList;
+    }
+
+    // Works because list is sorted from left to right top to bottom
+    private Bridge findBridgeEast(Node node) {
+        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
+            if (node.getRow() == this.nodes.get(i).getRow())
+                return new Bridge(node, this.nodes.get(i), null, Bridge.Direction.HORIZONTAL);
+        }
+        return null;
+    }
+
+    // Works because list is sorted from left to right top to bottom
+    private Bridge findBridgeSouth(Node node) {
+        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
+            if (node.getCol() == this.nodes.get(i).getCol())
+                return new Bridge(node, this.nodes.get(i), null, Bridge.Direction.VERTICAL);
+        }
+        return null;
     }
 
     public ArrayList<Node> getNodes() {
@@ -67,27 +78,6 @@ public class Game {
         return this.bridges;
     }
 
-    // For improved encoding only
-    // Works because list is sorted from left to right top to bottom
-    private Bridge findBridgeEast(Node node) {
-        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
-            if (node.getRow() == this.nodes.get(i).getRow())
-                return new Bridge(node, this.nodes.get(i), null, Bridge.Direction.HORIZONTAL);
-        }
-        return null;
-    }
-
-    // For improved encoding only
-    // Works because list is sorted from left to right top to bottom
-    private Bridge findBridgeSouth(Node node) {
-        for (int i = this.nodes.indexOf(node) + 1; i < this.nodes.size(); i++) {
-            if (node.getCol() == this.nodes.get(i).getCol())
-                return new Bridge(node, this.nodes.get(i), null, Bridge.Direction.VERTICAL);
-        }
-        return null;
-    }
-
-    // For improved encoding only
     // Returns all bridges connected to a node, regardless of weight
     public ArrayList<Bridge> getBridgesFrom(Node node) {
         ArrayList<Bridge> temp = new ArrayList<>();
