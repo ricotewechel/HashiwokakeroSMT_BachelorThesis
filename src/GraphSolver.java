@@ -74,7 +74,7 @@ public class GraphSolver {
         // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
         // Indices i and j of these variables match directly with the indices in game.nodes
         this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
-        for (int i = 0; i < (game.getNodes().size()); i++) {
+        for (int i = 0; i < (game.getNodes().size()); i++) { // TODO this outer loop is not needed
             for (int j = 0; j < (game.getNodes().size()); j++) {
                 for (int k = 1; k < (game.getBridges().size()); k++) {
                     this.connectionVariables[i][j][k] = this.bmgr.makeVariable("γ" + i + "," + j + "," + k);
@@ -172,10 +172,7 @@ public class GraphSolver {
 
     // Set a γ to true (if 0 == destination (vacuously) or if γx,y,e-1 (force connectedness))
     private BooleanFormula areNodesConnectedTrue(int dest, int i) {
-        return this.bmgr.equivalence(
-                this.connectionVariables[0][dest][i],
-                this.bmgr.makeTrue()
-        );
+        return this.connectionVariables[0][dest][i];
     }
 
     // Set a γ variable equivalent to a direct bridge or to false if not applicable
@@ -194,16 +191,15 @@ public class GraphSolver {
             }
         }
         // If node 0 and destination node don't form an adjacent bridge and thus not reachable in 1 step
-        return this.bmgr.equivalence(
-                this.connectionVariables[0][dest][1],
-                this.bmgr.makeFalse()
+        return this.bmgr.not(
+                this.connectionVariables[0][dest][1]
         );
     }
 
     // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
     private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
-        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1)
+        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1) // TODO change order
         for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
             int n3; // n3 will be the node we will try to reach destination node from in one step
             if (game.getNodes().get(dest).equals(b.getA())) {

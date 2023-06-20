@@ -20,7 +20,7 @@ public class Game {
     }
 
     // Parses the url suffix. Assumes a valid encoding is given
-    private ArrayList<Node> parseID (String encoding) {
+    private ArrayList<Node> parseID (String encoding) { // TODO allow non-square puzzles
         String[] parts = encoding.split(":");
         if (parts[0].endsWith("L"))
             throw new RuntimeException("Loops may not be prohibited");
