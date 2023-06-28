@@ -15,8 +15,8 @@ public class GraphSolver {
     private NumeralFormula.IntegerFormula[] bridgeVariables;
     private BooleanFormula[][][] connectionVariables;
 
-    public GraphSolver(String[] args) throws InvalidConfigurationException {
-        Configuration config = Configuration.fromCmdLineArguments(args);
+    public GraphSolver() throws InvalidConfigurationException {
+        Configuration config = Configuration.defaultConfiguration();
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();
         this.context = SolverContextFactory.createSolverContext(

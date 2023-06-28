@@ -15,8 +15,8 @@ public class GridSolver {
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[][] fieldVariables;
     private BooleanFormula[][][] connectionVariables;
-    public GridSolver(String[] args) throws InvalidConfigurationException {
-        Configuration config = Configuration.fromCmdLineArguments(args);
+    public GridSolver() throws InvalidConfigurationException {
+        Configuration config = Configuration.defaultConfiguration();
         LogManager logger = BasicLogManager.create(config);
         ShutdownManager shutdown = ShutdownManager.create();
         this.context = SolverContextFactory.createSolverContext(
@@ -29,14 +29,14 @@ public class GridSolver {
 
 
     public void solveGame(Game game) {
+//        Game secondgame = game;
         this.createVariables(game);
 
         // Solve with SMT solver
         Model model = null;
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
-            System.out.println(validCellsConstraint(game));
-            prover.addConstraint(validCellsConstraint(game));
+            prover.addConstraint(validCellsConstraint2(game));
             prover.addConstraint(neighborConstraint(game));
             prover.addConstraint(nodesSatisfiedConstraint(game));
             prover.addConstraint(nodesConnectedConstraint(game));
@@ -60,6 +60,56 @@ public class GridSolver {
         }
 
         game.fillFieldNaive(solution);
+
+
+//        // Solution using validCellsConstraint2:
+//        this.createVariables(secondgame);
+//
+//        ArrayList<BooleanFormula> solList = new ArrayList<>();
+//        for (int i = 0; i < secondgame.getFieldSize(); i++) {
+//            for (int j = 0; j < secondgame.getFieldSize(); j++) {
+//                solList.add(this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(solution[i][j])));
+//            }
+//        }
+//
+//        BooleanFormula isNotFirstSolution = this.bmgr.not(this.bmgr.and(solList));
+//
+//
+//        // Solve with SMT solver
+//        Model model2 = null;
+//        try (ProverEnvironment prover2 = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
+//            // Add constraints
+//            prover2.addConstraint(validCellsConstraint2(secondgame));
+//            prover2.addConstraint(neighborConstraint(secondgame));
+//            prover2.addConstraint(nodesSatisfiedConstraint(secondgame));
+//            prover2.addConstraint(nodesConnectedConstraint(secondgame));
+//
+//            prover2.addConstraint(isNotFirstSolution);
+//
+//            boolean isUnsat = prover2.isUnsat();
+//            if (!isUnsat) {
+//                model2 = prover2.getModel();
+//            }
+//        } catch (SolverException | InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        assert model2 != null;
+//
+//        // Retrieve solution
+//        try {
+//            BigInteger[][] solution2 = new BigInteger[secondgame.getFieldSize()][secondgame.getFieldSize()];
+//            for (int i = 0; i < secondgame.getFieldSize(); i++) {
+//                for (int j = 0; j < secondgame.getFieldSize(); j++) {
+//                    solution2[i][j] = model2.evaluate(this.fieldVariables[i][j]);
+//                }
+//            }
+//            secondgame.fillFieldNaive(solution2);
+//        } catch (NullPointerException ignored) {
+//            System.out.println("Unique solution");
+//        }
+
+
 
 //        this.printConnectionVariables(game, model);
     }
@@ -114,43 +164,20 @@ public class GridSolver {
 
     // Cells can either be empty, single horizontal, double horizontal, single vertical, double vertical, or nodes respectively encoded as 0, 1, 2, 3, 4, 5
     // Corners may not be bridge pieces, edges may only be bridge pieces along the axis. Only cells that have same coordinates as nodes list may be nodes
-    private BooleanFormula validCellsConstraint(Game game) {
+    //      1:		A
+    //          /\
+    //      2:      (B \/ C \/ D \/ E \/ F)
+    private BooleanFormula validCellsConstraint1(Game game) {
         ArrayList<BooleanFormula> validCellsList = new ArrayList<>();
 
-        for (int row = 0; row < game.getFieldSize(); row++) { // TODO blijkbaar als ik niet expliciet zeg dat !5 duurt het facking lang
+        for (int row = 0; row < game.getFieldSize(); row++) {
             for (int col = 0; col < game.getFieldSize(); col++) {
-//                validCellsList.add( // XOR all
-//                        this.bmgr.xor(
-//                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0)),
-//                                this.bmgr.xor(
-//                                        this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(1)),
-//                                        this.bmgr.xor(
-//                                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(2)),
-//                                                this.bmgr.xor(
-//                                                        this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(3)),
-//                                                        this.bmgr.xor(
-//                                                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4)),
-//                                                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(5))
-//                                                        )
-//                                                )
-//                                        )
-//                                )
-//                        )
-//                );
-
-//                validCellsList.add( // OR all
-//                        this.bmgr.and(
-//                                imgr.lessOrEquals(imgr.makeNumber(0), this.fieldVariables[row][col]),
-//                                imgr.lessOrEquals(this.fieldVariables[row][col], imgr.makeNumber(5))
-//                        )
-//                );
-
                 // Only cells with same coords as nodes list may be nodes
                 Node n = new Node(row, col, 0);
                 if (game.getNodes().contains(n)) {
                     validCellsList.add(
                             this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
-                    );;
+                    );
                 } else {
                     ArrayList<BooleanFormula> cellValidList = new ArrayList<>();
                     cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))); // e
@@ -163,21 +190,47 @@ public class GridSolver {
                         cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4))); // ‖
                     }
 
-//                    validCellsList.add(this.bmgr.or(cellValidList));
-//                    validCellsList.add(
-//                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))) //TODO dit maakt het veel sneller, maar is dat alleen nodig omdat 1 variable alle waardes kan hebben? xor ipv disj?
-//                    );
-
-                    validCellsList.add(this.bmgr.and(
-                            this.bmgr.or(cellValidList),
-                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
-                    ));
+                    validCellsList.add(this.bmgr.or(cellValidList));
                 }
+            }
+        }
+        return this.bmgr.and(validCellsList);
+    }
 
-                // Cells encoding must range from 0 to 5 (e ─ ═ | ‖ o)
 
+    // Cells can either be empty, single horizontal, double horizontal, single vertical, double vertical, or nodes respectively encoded as 0, 1, 2, 3, 4, 5
+    // Corners may not be bridge pieces, edges may only be bridge pieces along the axis. Only cells that have same coordinates as nodes list may be nodes
+    //      1:		A
+    //          /\
+    //      2:      (B \/ C \/ D \/ E \/ F) /\ (~A)
+    private BooleanFormula validCellsConstraint2(Game game) {
+        ArrayList<BooleanFormula> validCellsList = new ArrayList<>();
 
+        for (int row = 0; row < game.getFieldSize(); row++) {
+            for (int col = 0; col < game.getFieldSize(); col++) {
+                Node n = new Node(row, col, 0);
+                // Only cells with same coords as nodes list may be nodes
+                if (game.getNodes().contains(n)) {
+                    validCellsList.add(
+                            this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                    );
+                } else { // All other cells can be other pieces (depending on edges and corners), AND SHOULD NOT BE A NODE
+                    ArrayList<BooleanFormula> cellValidList = new ArrayList<>();
+                    cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))); // e
+                    if (0 < col && col < game.getFieldSize()-1) {
+                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(1))); // ─
+                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(2))); // ═
+                    }
+                    if (0 < row && row < game.getFieldSize()-1) {
+                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(3))); // |
+                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4))); // ‖
+                    }
 
+                    validCellsList.add(this.bmgr.or(cellValidList));
+                    validCellsList.add(
+                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))) //TODO dit maakt het veel sneller, maar is dat alleen nodig omdat 1 variable alle waardes kan hebben? xor ipv disj?
+                    );
+                }
             }
         }
         return this.bmgr.and(validCellsList);

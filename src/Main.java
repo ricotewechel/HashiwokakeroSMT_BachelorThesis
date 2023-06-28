@@ -9,8 +9,8 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) throws InvalidConfigurationException, SolverException {
-        GraphSolver graphSolver = new GraphSolver(args);
-        GridSolver gridSolver = new GridSolver(args);
+        GraphSolver graphSolver = new GraphSolver();
+        GridSolver gridSolver = new GridSolver();
 
         ArrayList<String> puzzles = new ArrayList<>(){
                 {
@@ -49,6 +49,8 @@ public class Main {
             Game b = new Game(s);
             gridSolver.solveGame(b);
             System.out.println(b);
+
+//            System.out.println(a.toString().equals(b.toString()));
         }
 
 
