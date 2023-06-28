@@ -14,7 +14,7 @@ public class GridSolver {
     private final BooleanFormulaManager bmgr;
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[][] fieldVariables;
-    private BooleanFormula[][][] connectionVariables;
+    private BooleanFormula[][] connectionVariables;
     public GridSolver() throws InvalidConfigurationException {
         Configuration config = Configuration.defaultConfiguration();
         LogManager logger = BasicLogManager.create(config);
@@ -79,6 +79,7 @@ public class GridSolver {
         System.out.println("Grid:\t" + constrTime + "\t" + unsatTime + "\t" + satTime + "\t" + totalTime);
 
         game.fillFieldNaive(solution);
+
 
 
 //        // Solution using validCellsConstraint2:
@@ -169,12 +170,10 @@ public class GridSolver {
 
         // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
         // Indices i and j of these variables match directly with the indices in game.nodes
-        this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
-        for (int i = 0; i < (game.getNodes().size()); i++) { // TODO this outer loop is not needed
-            for (int j = 0; j < (game.getNodes().size()); j++) {
-                for (int k = 1; k < (game.getBridges().size()); k++) {
-                    this.connectionVariables[i][j][k] = this.bmgr.makeVariable("γ" + i + "," + j + "," + k);
-                }
+        this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getBridges().size()];
+        for (int n = 0; n < (game.getNodes().size()); n++) {
+            for (int i = 1; i < (game.getBridges().size()); i++) {
+                this.connectionVariables[n][i] = this.bmgr.makeVariable("γ0," + n + "," + i);
             }
         }
     }
@@ -467,7 +466,7 @@ public class GridSolver {
 
     // Set a γ to true (if 0 == destination (vacuously) or if γx,y,e-1 (force connectedness))
     private BooleanFormula areNodesConnectedTrue(int dest, int i) {
-        return this.connectionVariables[0][dest][i];
+        return this.connectionVariables[dest][i];
     }
 
     // Set a γ variable equivalent to a direct bridge or to false if not applicable
@@ -477,7 +476,7 @@ public class GridSolver {
             if (b.getA().equals(game.getNodes().get(0)) && b.getA().getRow() == b.getB().getRow()){ // Only need to check one direction since node 0 is always in top left
                 // If node 0 and destination node form the two bridge endpoints of the adjacent horizontal bridge
                 return this.bmgr.equivalence( // Connected in 1 <=> Hbridge should exist
-                        this.connectionVariables[0][dest][1],
+                        this.connectionVariables[dest][1],
                         this.bmgr.or(
                                 this.imgr.equal(
                                         this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
@@ -492,7 +491,7 @@ public class GridSolver {
             } else if (b.getA().equals(game.getNodes().get(0)) && b.getA().getCol() == b.getB().getCol()){ // Only need to check one direction since node 0 is always in top left
                 // If node 0 and destination node form the two bridge endpoints of the adjacent vertical bridge
                 return this.bmgr.equivalence( // Connected in 1 <=> bridge should exist
-                        this.connectionVariables[0][dest][1],
+                        this.connectionVariables[dest][1],
                         this.bmgr.or(
                                 this.imgr.equal(
                                         this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
@@ -508,7 +507,7 @@ public class GridSolver {
         }
         // If node 0 and destination node don't form an adjacent bridge and thus not reachable in 1 step
         return this.bmgr.not(
-                this.connectionVariables[0][dest][1]
+                this.connectionVariables[dest][1]
         );
     }
 
@@ -523,7 +522,7 @@ public class GridSolver {
                 if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // East
                     temp.add(
                             this.bmgr.and(
-                                    this.connectionVariables[0][n3][i-1],
+                                    this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
@@ -539,7 +538,7 @@ public class GridSolver {
                 } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // South
                     temp.add(
                             this.bmgr.and(
-                                    this.connectionVariables[0][n3][i-1],
+                                    this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
@@ -558,7 +557,7 @@ public class GridSolver {
                 if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // West
                     temp.add(
                             this.bmgr.and(
-                                    this.connectionVariables[0][n3][i-1],
+                                    this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
@@ -574,7 +573,7 @@ public class GridSolver {
                 } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // North
                     temp.add(
                             this.bmgr.and(
-                                    this.connectionVariables[0][n3][i-1],
+                                    this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
@@ -593,31 +592,25 @@ public class GridSolver {
         BooleanFormula neighborDisjunction = this.bmgr.or(temp); // at least one case should be true
 
         return this.bmgr.equivalence(
-                this.connectionVariables[0][dest][i],
+                this.connectionVariables[dest][i],
                 this.bmgr.or( // at least one case should be true
-                        this.connectionVariables[0][dest][i-1],
+                        this.connectionVariables[dest][i-1],
                         neighborDisjunction
                 )
         );
     }
 
     private void printConnectionVariables(Game game, Model model) {
-        boolean[][][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()][game.getBridges().size()];
-        for (int i = 0; i < (game.getNodes().size()); i++) {
-            for (int j = 0; j < (game.getNodes().size()); j++) {
-                for (int k = 1; k < (game.getBridges().size()); k++) {
-                    solution2[i][j][k] = model.evaluate(connectionVariables[i][j][k]);
-                }
+        boolean[][] solution2 = new boolean[game.getNodes().size()][game.getBridges().size()];
+        for (int n = 0; n < (game.getNodes().size()); n++) {
+            for (int i = 1; i < (game.getBridges().size()); i++) {
+                solution2[n][i] = model.evaluate(connectionVariables[n][i]);
             }
         }
 
-        for (int i = 0; i < (game.getNodes().size()); i++) {
-            for (int j = 0; j < (game.getNodes().size()); j++) {
-                for (int k = 1; k < (game.getBridges().size()); k++) {
-                    System.out.print(connectionVariables[i][j][k]);
-                    System.out.print(": ");
-                    System.out.println(solution2[i][j][k]);
-                }
+        for (int n = 0; n < (game.getNodes().size()); n++) {
+            for (int i = 1; i < (game.getBridges().size()); i++) {
+                System.out.println(connectionVariables[n][i] + ": " + solution2[n][i]);
             }
         }
     }
