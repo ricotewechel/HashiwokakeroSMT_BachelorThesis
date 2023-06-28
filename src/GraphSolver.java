@@ -31,19 +31,35 @@ public class GraphSolver {
     public void solveGame(Game game) {
         this.createVariables(game);
 
+        long t0 = 0;
+        long constrTime = 0;
+        long t1 = 0;
+        long unsatTime = 0;
+        long t2 = 0;
+        long satTime = 0;
+        long totalTime = 0;
+
         // Solve with SMT solver
         Model model = null;
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
+            t0 = System.currentTimeMillis();
             prover.addConstraint(this.validBridgeSizesConstraint());
             prover.addConstraint(this.bridgesDontCrossConstraint(game));
             prover.addConstraint(this.nodesSatisfiedConstraint(game));
             prover.addConstraint(this.nodesConnectedConstraint(game));
+            constrTime = System.currentTimeMillis() - t0;
 
+            t1 = System.currentTimeMillis();
             boolean isUnsat = prover.isUnsat();
+            unsatTime = System.currentTimeMillis() - t1;
             if (!isUnsat) {
+                t2 = System.currentTimeMillis();
                 model = prover.getModel();
+                satTime = System.currentTimeMillis() - t2;
             }
+            totalTime = System.currentTimeMillis() - t1;
+
         } catch (SolverException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -52,9 +68,12 @@ public class GraphSolver {
 
         // Retrieve solution
         ArrayList<BigInteger> solution = new ArrayList<>();
+
         for (NumeralFormula.IntegerFormula v : this.bridgeVariables) {
             solution.add(model.evaluate(v));
         }
+
+        System.out.println("Graph:\t" + constrTime + "\t" + unsatTime + "\t" + satTime + "\t" + totalTime);
 
         game.setBridgeWeights(solution);
         game.fillFieldImproved();
@@ -159,7 +178,7 @@ public class GraphSolver {
                     everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
                 } else if (i == 1) { // γ0,2,1 <=> x1  or  γ0,3,1 <=> False
                     everythingConnectedList.add(this.areNodesConnectedInOneStep(dest, game));
-                } else { // γ0,3,2 <=> γ0,3,1 \/ (x2 /\ γ0,1,1) \/ (x3 /\ γ0,2,1)
+                } else { // γ0,3,2 <=> γ0,3,1 \/ (γ0,1,1 /\ x2) \/ (γ0,2,1 /\ x3)
                     everythingConnectedList.add(this.areNodesConnectedInISteps(dest, i, game));
                 }
                 if (i == game.getNodes().size()-1) { // γ0,x,e-1 <=> True
@@ -199,7 +218,7 @@ public class GraphSolver {
     // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
     private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
-        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1) // TODO change order
+        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (γ0,n3,i-1 /\ x*)
         for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
             int n3; // n3 will be the node we will try to reach destination node from in one step
             if (game.getNodes().get(dest).equals(b.getA())) {
@@ -209,11 +228,11 @@ public class GraphSolver {
             } else continue; // error
             temp.add(
                     this.bmgr.and(
+                            this.connectionVariables[0][n3][i-1],
                             this.imgr.greaterThan(
                                     this.bridgeVariables[game.getBridges().indexOf(b)],
                                     imgr.makeNumber(0)
-                            ),
-                            this.connectionVariables[0][n3][i-1]
+                            )
                     )
             );
         }

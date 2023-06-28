@@ -32,19 +32,35 @@ public class GridSolver {
 //        Game secondgame = game;
         this.createVariables(game);
 
+        long t0 = 0;
+        long constrTime = 0;
+        long t1 = 0;
+        long unsatTime = 0;
+        long t2 = 0;
+        long satTime = 0;
+        long totalTime = 0;
+
         // Solve with SMT solver
         Model model = null;
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
-            prover.addConstraint(validCellsConstraint2(game));
-            prover.addConstraint(neighborConstraint(game));
-            prover.addConstraint(nodesSatisfiedConstraint(game));
-            prover.addConstraint(nodesConnectedConstraint(game));
+            t0 = System.currentTimeMillis();
+            prover.addConstraint(this.validCellsConstraint2(game));
+            prover.addConstraint(this.neighborConstraint(game));
+            prover.addConstraint(this.nodesSatisfiedConstraint(game));
+            prover.addConstraint(this.nodesConnectedConstraint(game));
+            constrTime = System.currentTimeMillis() - t0;
 
+            t1 = System.currentTimeMillis();
             boolean isUnsat = prover.isUnsat();
+            unsatTime = System.currentTimeMillis() - t1;
             if (!isUnsat) {
+                t2 = System.currentTimeMillis();
                 model = prover.getModel();
+                satTime = System.currentTimeMillis() - t2;
             }
+            totalTime = System.currentTimeMillis() - t1;
+
         } catch (SolverException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -53,11 +69,14 @@ public class GridSolver {
 
         // Retrieve solution
         BigInteger[][] solution = new BigInteger[game.getFieldSize()][game.getFieldSize()];
+
         for (int i = 0; i < game.getFieldSize(); i++) {
             for (int j = 0; j < game.getFieldSize(); j++) {
                 solution[i][j] = model.evaluate(this.fieldVariables[i][j]);
             }
         }
+
+        System.out.println("Grid:\t" + constrTime + "\t" + unsatTime + "\t" + satTime + "\t" + totalTime);
 
         game.fillFieldNaive(solution);
 
@@ -108,7 +127,6 @@ public class GridSolver {
 //        } catch (NullPointerException ignored) {
 //            System.out.println("Unique solution");
 //        }
-
 
 
 //        this.printConnectionVariables(game, model);
@@ -227,8 +245,8 @@ public class GridSolver {
                     }
 
                     validCellsList.add(this.bmgr.or(cellValidList));
-                    validCellsList.add(
-                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))) //TODO dit maakt het veel sneller, maar is dat alleen nodig omdat 1 variable alle waardes kan hebben? xor ipv disj?
+                    validCellsList.add( // Adding this proposition explicitly significantly improves speed
+                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
                     );
                 }
             }
@@ -251,8 +269,6 @@ public class GridSolver {
                                     )
                             )
                     );
-//                    System.out.print("φ" + i + "," + j + " = " + p + " -> and");
-//                    System.out.println(getNeighborRestrictionList(game, i, j, p));
                 }
             }
         }
@@ -438,7 +454,7 @@ public class GridSolver {
                     everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
                 } else if (i == 1) { // γ0,2,1 <=> x1  or  γ0,3,1 <=> False
                     everythingConnectedList.add(this.areNodesConnectedInOneStep(dest, game));
-                } else { // γ0,3,2 <=> γ0,3,1 \/ (x2 /\ γ0,1,1) \/ (x3 /\ γ0,2,1)
+                } else { // γ0,3,2 <=> γ0,3,1 \/ (γ0,1,1 /\ x2) \/ (γ0,2,1 /\ x3)
                     everythingConnectedList.add(this.areNodesConnectedInISteps(dest, i, game));
                 }
                 if (i == game.getNodes().size()-1) { // γ0,x,e-1 <=> True
@@ -499,7 +515,7 @@ public class GridSolver {
     // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
     private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
-        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (x* /\ γ0,n3,i-1) //TODO
+        ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (γ0,n3,i-1 /\ x*)
         for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
             int n3; // n3 will be the node we will try to reach destination node from in one step
             if (game.getNodes().get(dest).equals(b.getA())) { // East or south bridge
@@ -507,6 +523,7 @@ public class GridSolver {
                 if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // East
                     temp.add(
                             this.bmgr.and(
+                                    this.connectionVariables[0][n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
@@ -516,13 +533,13 @@ public class GridSolver {
                                                     this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
                                                     this.imgr.makeNumber(2)
                                             )
-                                    ),
-                                    this.connectionVariables[0][n3][i-1]
+                                    )
                             )
                     );
                 } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // South
                     temp.add(
                             this.bmgr.and(
+                                    this.connectionVariables[0][n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
@@ -532,8 +549,7 @@ public class GridSolver {
                                                     this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
                                                     this.imgr.makeNumber(4)
                                             )
-                                    ),
-                                    this.connectionVariables[0][n3][i-1]
+                                    )
                             )
                     );
                 }
@@ -542,6 +558,7 @@ public class GridSolver {
                 if (b.getDirection().equals(Bridge.Direction.HORIZONTAL)) { // West
                     temp.add(
                             this.bmgr.and(
+                                    this.connectionVariables[0][n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
@@ -551,13 +568,13 @@ public class GridSolver {
                                                     this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
                                                     this.imgr.makeNumber(2)
                                             )
-                                    ),
-                                    this.connectionVariables[0][n3][i-1]
+                                    )
                             )
                     );
                 } else if (b.getDirection().equals(Bridge.Direction.VERTICAL)) { // North
                     temp.add(
                             this.bmgr.and(
+                                    this.connectionVariables[0][n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
                                                     this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
@@ -567,8 +584,7 @@ public class GridSolver {
                                                     this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
                                                     this.imgr.makeNumber(4)
                                             )
-                                    ),
-                                    this.connectionVariables[0][n3][i-1]
+                                    )
                             )
                     );
                 }
