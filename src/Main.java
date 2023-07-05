@@ -1,12 +1,12 @@
 import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import org.sosy_lab.java_smt.api.SolverException;
-import java.io.File;
-import java.io.FileNotFoundException;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) throws InvalidConfigurationException, SolverException {
+    public static void main(String[] args) throws InvalidConfigurationException, IOException {
         GraphSolver graphSolver = new GraphSolver();
         GridSolver gridSolver = new GridSolver();
 
@@ -24,6 +24,7 @@ public class Main {
 //                }
 //        };
 
+        // Scan file for puzzle IDs, create list
         ArrayList<String> puzzles = new ArrayList<>();
         try {
             File file = new File(args[0]);
@@ -37,21 +38,31 @@ public class Main {
             e.printStackTrace();
         }
 
+        // Initialize writer
+        String filename = "times_" + args[0].substring(args[0].lastIndexOf('/')+1);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+
+        ArrayList<Long> times;
         for (String s : puzzles) {
-            System.out.println(s);
+            writer.write(s + "\n");
 
 //            System.out.println("Trying to solve puzzle with graph encoding...");
             Game a = new Game(s);
-            graphSolver.solveGame(a);
+            times = graphSolver.solveGame(a);
 //            System.out.println(a);
+            writer.write("Graph:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
 
 //            System.out.println("Trying to solve puzzle with grid encoding...");
             Game b = new Game(s);
+            times = graphSolver.solveGame(a);
             gridSolver.solveGame(b);
 //            System.out.println(b);
+            writer.write("Grid:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
 
-            System.out.println("Equal solution:\t" + a.toString().equals(b.toString()));
+            writer.write("Equal solution:\t" + a.toString().equals(b.toString()) + "\n");
         }
+
+        writer.close();
 
 
 //        Sudoku.solve(args);

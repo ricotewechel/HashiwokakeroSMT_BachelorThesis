@@ -28,7 +28,7 @@ public class GridSolver {
     }
 
 
-    public void solveGame(Game game) {
+    public ArrayList<Long> solveGame(Game game) {
 //        Game secondgame = game;
         this.createVariables(game);
 
@@ -39,6 +39,7 @@ public class GridSolver {
         long t2 = 0;
         long satTime = 0;
         long totalTime = 0;
+        ArrayList<Long> times = new ArrayList<>();
 
         // Solve with SMT solver
         Model model = null;
@@ -49,17 +50,22 @@ public class GridSolver {
             prover.addConstraint(this.neighborConstraint(game));
             prover.addConstraint(this.nodesSatisfiedConstraint(game));
             prover.addConstraint(this.nodesConnectedConstraint(game));
-            constrTime = System.currentTimeMillis() - t0;
+            constrTime = System.currentTimeMillis() - t0; // Time it takes to construct all constraints
+            times.add(constrTime);
 
             t1 = System.currentTimeMillis();
             boolean isUnsat = prover.isUnsat();
-            unsatTime = System.currentTimeMillis() - t1;
+            unsatTime = System.currentTimeMillis() - t1; // Time it takes to verify that the puzzle is unsatisfiable
+            times.add(unsatTime);
+
             if (!isUnsat) {
                 t2 = System.currentTimeMillis();
                 model = prover.getModel();
-                satTime = System.currentTimeMillis() - t2;
+                satTime = System.currentTimeMillis() - t2; // Time it takes to retrieve the solution model
+                times.add(satTime);
             }
-            totalTime = System.currentTimeMillis() - t1;
+            totalTime = System.currentTimeMillis() - t1; // Total it takes to verify and retrieve solution (unsatTime + satTime)
+            times.add(totalTime);
 
         } catch (SolverException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -76,11 +82,11 @@ public class GridSolver {
             }
         }
 
-        System.out.println("Grid:\t" + constrTime + "\t" + unsatTime + "\t" + satTime + "\t" + totalTime);
-
         game.fillFieldNaive(solution);
 
+//        this.printConnectionVariables(game, model);
 
+        return times;
 
 //        // Solution using validCellsConstraint2:
 //        this.createVariables(secondgame);
