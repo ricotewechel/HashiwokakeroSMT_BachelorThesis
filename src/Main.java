@@ -24,6 +24,7 @@ public class Main {
 //                }
 //        };
 
+
         // Scan file for puzzle IDs, create list
         ArrayList<String> puzzles = new ArrayList<>();
         try {
@@ -38,31 +39,44 @@ public class Main {
             e.printStackTrace();
         }
 
-        // Initialize writer
+
+
+
+        // Write results to file
         String filename = "times_" + args[0].substring(args[0].lastIndexOf('/')+1);
         BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-
         ArrayList<Long> times;
         for (String s : puzzles) {
             writer.write(s + "\n");
 
-//            System.out.println("Trying to solve puzzle with graph encoding...");
             Game a = new Game(s);
             times = graphSolver.solveGame(a);
-//            System.out.println(a);
             writer.write("Graph:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
 
-//            System.out.println("Trying to solve puzzle with grid encoding...");
             Game b = new Game(s);
-            times = graphSolver.solveGame(a);
-            gridSolver.solveGame(b);
-//            System.out.println(b);
+            times = gridSolver.solveGame(b);
             writer.write("Grid:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
 
             writer.write("Equal solution:\t" + a.toString().equals(b.toString()) + "\n");
         }
-
         writer.close();
+
+
+//        // Only print solutions
+//        ArrayList<Long> times;
+//        for (String s : puzzles) {
+//            System.out.println("Trying to solve puzzle with graph encoding...");
+//            Game a = new Game(s);
+//            times = graphSolver.solveGame(a);
+//            System.out.println(a);
+//            System.out.println(times);
+//
+//            System.out.println("Trying to solve puzzle with grid encoding...");
+//            Game b = new Game(s);
+//            times = gridSolver.solveGame(b);
+//            System.out.println(b);
+//            System.out.println(times);
+//        }
 
 
 //        Sudoku.solve(args);
