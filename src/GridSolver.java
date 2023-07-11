@@ -176,9 +176,9 @@ public class GridSolver {
 
         // Create variables for connectedness of each node pair in AT MOST i amount of steps, where i is at most edges-1
         // Indices i and j of these variables match directly with the indices in game.nodes
-        this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getBridges().size()];
+        this.connectionVariables = new BooleanFormula[game.getNodes().size()][game.getNodes().size()];
         for (int n = 0; n < (game.getNodes().size()); n++) {
-            for (int i = 1; i < (game.getBridges().size()); i++) {
+            for (int i = 1; i < (game.getNodes().size()); i++) {
                 this.connectionVariables[n][i] = this.bmgr.makeVariable("γ0," + n + "," + i);
             }
         }
@@ -454,7 +454,7 @@ public class GridSolver {
     BooleanFormula nodesConnectedConstraint(Game game) {
         ArrayList<BooleanFormula> everythingConnectedList = new ArrayList<>();
         for (int dest = 0; dest < game.getNodes().size(); dest++) {
-            for (int i = 1; i < game.getBridges().size(); i++) {
+            for (int i = 1; i < game.getNodes().size(); i++) {
                 if (0 == dest) { // γ0,0,i <=> True
                     everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
                 } else if (i == 1) { // γ0,2,1 <=> x1  or  γ0,3,1 <=> False
@@ -462,7 +462,7 @@ public class GridSolver {
                 } else { // γ0,3,2 <=> γ0,3,1 \/ (γ0,1,1 /\ x2) \/ (γ0,2,1 /\ x3)
                     everythingConnectedList.add(this.areNodesConnectedInISteps(dest, i, game));
                 }
-                if (i == game.getNodes().size()-1) { // γ0,x,e-1 <=> True
+                if (i == game.getNodes().size()-1) { // γ0,x,n-1 <=> True
                     everythingConnectedList.add(this.areNodesConnectedTrue(dest, i));
                 }
             }
@@ -470,7 +470,7 @@ public class GridSolver {
         return bmgr.and(everythingConnectedList);
     }
 
-    // Set a γ to true (if 0 == destination (vacuously) or if γx,y,e-1 (force connectedness))
+    // Set a γ to true (if 0 == destination (vacuously) or if γx,y,n-1 (force connectedness))
     private BooleanFormula areNodesConnectedTrue(int dest, int i) {
         return this.connectionVariables[dest][i];
     }
@@ -607,15 +607,15 @@ public class GridSolver {
     }
 
     private void printConnectionVariables(Game game, Model model) {
-        boolean[][] solution2 = new boolean[game.getNodes().size()][game.getBridges().size()];
+        boolean[][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()];
         for (int n = 0; n < (game.getNodes().size()); n++) {
-            for (int i = 1; i < (game.getBridges().size()); i++) {
+            for (int i = 1; i < (game.getNodes().size()); i++) {
                 solution2[n][i] = model.evaluate(connectionVariables[n][i]);
             }
         }
 
         for (int n = 0; n < (game.getNodes().size()); n++) {
-            for (int i = 1; i < (game.getBridges().size()); i++) {
+            for (int i = 1; i < (game.getNodes().size()); i++) {
                 System.out.println(connectionVariables[n][i] + ": " + solution2[n][i]);
             }
         }
