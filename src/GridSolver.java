@@ -272,77 +272,31 @@ public class GridSolver {
     private ArrayList<BooleanFormula> getNeighborRestrictionList(int i, int j, int piece) {
         ArrayList<BooleanFormula> neighborRestrictionList = new ArrayList<>();
         if (piece == 1 || piece == 2) { // ─ or ═
-            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
-                if (dir == Direction.NORTH) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(0)), // e
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(1)), // ─
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(2)), // ═
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.EAST) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(piece)), // piece
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.SOUTH) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(0)), // e
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(1)), // ─
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(2)), // ═
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.WEST) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(piece)), // piece
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(5)) // o
-                            )
-                    );
-                }
-            }
+            neighborRestrictionList.add(
+                    this.bmgr.or(
+                            this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(piece)), // same piece west
+                            this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(5)) // cell west
+                    )
+            );
+            neighborRestrictionList.add(
+                    this.bmgr.or(
+                            this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(piece)), // same piece east
+                            this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(5)) // cell east
+                    )
+            );
         } else if (piece == 3 || piece == 4) { // | or ‖
-            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
-                if (dir == Direction.NORTH) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(piece)), // piece
-                                    this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.EAST) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(0)), // e
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(3)), // |
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(4)), // ‖
-                                    this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.SOUTH) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(piece)), // piece
-                                    this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(5)) // o
-                            )
-                    );
-                } else if (dir == Direction.WEST) {
-                    neighborRestrictionList.add(
-                            this.bmgr.or(
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(0)), // e
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(3)), // |
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(4)), // ‖
-                                    this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(5)) // o
-                            )
-                    );
-                }
-            }
+            neighborRestrictionList.add(
+                    this.bmgr.or(
+                            this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(piece)), // same piece north
+                            this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(5)) // cell north
+                    )
+            );
+            neighborRestrictionList.add(
+                    this.bmgr.or(
+                            this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(piece)), // same piece south
+                            this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(5)) // cell south
+                    )
+            );
         }
         return neighborRestrictionList;
     }
@@ -353,7 +307,7 @@ public class GridSolver {
         ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
         for (Node n : game.getNodes()) { // n is located at [row+1][col+1] in fieldvariables, so all fieldVariables +1
             ArrayList<NumeralFormula.IntegerFormula> sumList = new ArrayList<>();
-            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
+            for (Direction dir : Direction.values()) {
                 if (dir == Direction.NORTH)
                     sumList.add(
                             this.bmgr.ifThenElse(
