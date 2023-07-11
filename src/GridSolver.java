@@ -46,7 +46,7 @@ public class GridSolver {
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
             t0 = System.currentTimeMillis();
-            prover.addConstraint(this.validCellsConstraint2(game));
+            prover.addConstraint(this.validCellsConstraint1(game));
             prover.addConstraint(this.neighborConstraint(game));
             prover.addConstraint(this.nodesSatisfiedConstraint(game));
             prover.addConstraint(this.nodesConnectedConstraint(game));
@@ -76,9 +76,9 @@ public class GridSolver {
         // Retrieve solution
         BigInteger[][] solution = new BigInteger[game.getFieldSize()][game.getFieldSize()];
 
-        for (int i = 0; i < game.getFieldSize(); i++) {
-            for (int j = 0; j < game.getFieldSize(); j++) {
-                solution[i][j] = model.evaluate(this.fieldVariables[i][j]);
+        for (int i = 1; i < game.getFieldSize()+1; i++) {
+            for (int j = 1; j < game.getFieldSize()+1; j++) {
+                solution[i-1][j-1] = model.evaluate(this.fieldVariables[i][j]);
             }
         }
 
@@ -148,29 +148,13 @@ public class GridSolver {
         WEST
     }
 
-    // Retrieves all directions that have neighbors. Used in other functions
-    private ArrayList<Direction> getPossibleNeighbors(Game game, int row, int col) {
-        ArrayList<Direction> directions = new ArrayList<>(
-                Arrays.asList(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
-        );
-        if (row == 0)
-            directions.remove(Direction.NORTH);
-        if (col == game.getFieldSize()-1)
-            directions.remove(Direction.EAST);
-        if (row == game.getFieldSize()-1)
-            directions.remove(Direction.SOUTH);
-        if (col == 0)
-            directions.remove(Direction.WEST);
-        return directions;
-    }
-
 
     private void createVariables(Game game) {
         // Create variables for each grid cell (each cell can be empty, a node, or a bridge piece)
-        this.fieldVariables = new NumeralFormula.IntegerFormula[game.getFieldSize()][game.getFieldSize()];
-        for (int i = 0; i < game.getFieldSize(); i++) {
-            for (int j = 0; j < game.getFieldSize(); j++) {
-                this.fieldVariables[i][j] = this.imgr.makeVariable("φ" + i + "," + j);
+        this.fieldVariables = new NumeralFormula.IntegerFormula[game.getFieldSize()+2][game.getFieldSize()+2];
+        for (int i = 0; i < game.getFieldSize()+2; i++) { // +2 to introduce a boundary around the game for empty cells
+            for (int j = 0; j < game.getFieldSize()+2; j++) { // +2 to introduce a boundary around the game for empty cells
+                this.fieldVariables[i][j] = this.imgr.makeVariable("φ" + i + "," + j); // φi,j represents field i-1,j-1 in the actual game, because of the boundary
             }
         }
 
@@ -193,27 +177,29 @@ public class GridSolver {
     private BooleanFormula validCellsConstraint1(Game game) {
         ArrayList<BooleanFormula> validCellsList = new ArrayList<>();
 
-        for (int row = 0; row < game.getFieldSize(); row++) {
-            for (int col = 0; col < game.getFieldSize(); col++) {
-                // Only cells with same coords as nodes list may be nodes
-                Node n = new Node(row, col, 0);
-                if (game.getNodes().contains(n)) {
+        for (int row = 0; row < game.getFieldSize()+2; row++) { // Loop through field excluding boundaries
+            for (int col = 0; col < game.getFieldSize()+2; col++) { // Loop through field excluding boundaries
+                if (row == 0 || col == 0 || row == game.getFieldSize()+1 || col == game.getFieldSize()+1) {
                     validCellsList.add(
-                            this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                            this.bmgr.and( // Force outer bound to be empty in any case
+                                    this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))
+                            )
                     );
                 } else {
-                    ArrayList<BooleanFormula> cellValidList = new ArrayList<>();
-                    cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))); // e
-                    if (0 < col && col < game.getFieldSize()-1) {
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(1))); // ─
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(2))); // ═
+                    // Only cells with same coords as nodes list may be nodes
+                    Node n = new Node(row-1, col-1, 0);
+                    if (game.getNodes().contains(n)) {
+                        validCellsList.add(
+                                this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                        );
+                    } else { // All other cells can be other pieces
+                        validCellsList.add(
+                                this.bmgr.and(
+                                        this.imgr.greaterOrEquals(this.fieldVariables[row][col], this.imgr.makeNumber(0)),
+                                        this.imgr.lessOrEquals(this.fieldVariables[row][col], this.imgr.makeNumber(4))
+                                )
+                        );
                     }
-                    if (0 < row && row < game.getFieldSize()-1) {
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(3))); // |
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4))); // ‖
-                    }
-
-                    validCellsList.add(this.bmgr.or(cellValidList));
                 }
             }
         }
@@ -229,30 +215,32 @@ public class GridSolver {
     private BooleanFormula validCellsConstraint2(Game game) {
         ArrayList<BooleanFormula> validCellsList = new ArrayList<>();
 
-        for (int row = 0; row < game.getFieldSize(); row++) {
-            for (int col = 0; col < game.getFieldSize(); col++) {
-                Node n = new Node(row, col, 0);
-                // Only cells with same coords as nodes list may be nodes
-                if (game.getNodes().contains(n)) {
+        for (int row = 0; row < game.getFieldSize()+2; row++) { // Loop through field excluding boundaries
+            for (int col = 0; col < game.getFieldSize()+2; col++) { // Loop through field excluding boundaries
+                if (row == 0 || col == 0 || row == game.getFieldSize()+1 || col == game.getFieldSize()+1) {
                     validCellsList.add(
-                            this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                            this.bmgr.and( // Force outer bound to be empty in any case
+                                    this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))
+                            )
                     );
-                } else { // All other cells can be other pieces (depending on edges and corners), AND SHOULD NOT BE A NODE
-                    ArrayList<BooleanFormula> cellValidList = new ArrayList<>();
-                    cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(0))); // e
-                    if (0 < col && col < game.getFieldSize()-1) {
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(1))); // ─
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(2))); // ═
+                } else {
+                    // Only cells with same coords as nodes list may be nodes
+                    Node n = new Node(row-1, col-1, 0);
+                    if (game.getNodes().contains(n)) {
+                        validCellsList.add(
+                                this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                        );
+                    } else { // All other cells can be other pieces AND SHOULD NOT BE A NODE
+                        validCellsList.add(
+                                this.bmgr.and(
+                                        this.imgr.greaterOrEquals(this.fieldVariables[row][col], this.imgr.makeNumber(0)),
+                                        this.imgr.lessOrEquals(this.fieldVariables[row][col], this.imgr.makeNumber(4))
+                                )
+                        );
+                        validCellsList.add( // Adding this proposition explicitly significantly improves speed (Only in old encoding without boundaries?)
+                                this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
+                        );
                     }
-                    if (0 < row && row < game.getFieldSize()-1) {
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(3))); // |
-                        cellValidList.add(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(4))); // ‖
-                    }
-
-                    validCellsList.add(this.bmgr.or(cellValidList));
-                    validCellsList.add( // Adding this proposition explicitly significantly improves speed
-                            this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
-                    );
                 }
             }
         }
@@ -262,29 +250,29 @@ public class GridSolver {
 
     // Constraint 1 to 4: Bridges must be between two nodes, must be vertical or horizontal, must be single or double, and may not cross
     private BooleanFormula neighborConstraint(Game game) {
-        ArrayList<BooleanFormula> NeighborList = new ArrayList<>();
-        for (int i = 0; i < game.getFieldSize(); i++) {
-            for (int j = 0; j < game.getFieldSize(); j++) {
+        ArrayList<BooleanFormula> neighborList = new ArrayList<>();
+        for (int i = 1; i < game.getFieldSize()+1; i++) { // Loop through field excluding boundaries
+            for (int j = 1; j < game.getFieldSize()+1; j++) { // Loop through field excluding boundaries
                 for (int p = 1; p <= 4; p++) {
-                    NeighborList.add(
+                    neighborList.add(
                             this.bmgr.implication(
                                     this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(p)),
                                     this.bmgr.and(
-                                            getNeighborRestrictionList(game, i, j, p)
+                                            getNeighborRestrictionList(i, j, p)
                                     )
                             )
                     );
                 }
             }
         }
-        return this.bmgr.and(NeighborList);
+        return this.bmgr.and(neighborList);
     }
 
     // Creates restrictions for possible neighbors, used in neighborConstraint()
-    private ArrayList<BooleanFormula> getNeighborRestrictionList(Game game, int i, int j, int piece) {
+    private ArrayList<BooleanFormula> getNeighborRestrictionList(int i, int j, int piece) {
         ArrayList<BooleanFormula> neighborRestrictionList = new ArrayList<>();
         if (piece == 1 || piece == 2) { // ─ or ═
-            for (Direction dir : this.getPossibleNeighbors(game, i, j)) {
+            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
                 if (dir == Direction.NORTH) {
                     neighborRestrictionList.add(
                             this.bmgr.or(
@@ -320,7 +308,7 @@ public class GridSolver {
                 }
             }
         } else if (piece == 3 || piece == 4) { // | or ‖
-            for (Direction dir : this.getPossibleNeighbors(game, i, j)) {
+            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
                 if (dir == Direction.NORTH) {
                     neighborRestrictionList.add(
                             this.bmgr.or(
@@ -363,20 +351,20 @@ public class GridSolver {
     // Constraint 5: All nodes must have neighboring bridge pieces that add up to node value.
     private BooleanFormula nodesSatisfiedConstraint(Game game) {
         ArrayList<BooleanFormula> nodesSatisfiedList = new ArrayList<>();
-        for (Node n : game.getNodes()) {
+        for (Node n : game.getNodes()) { // n is located at [row+1][col+1] in fieldvariables, so all fieldVariables +1
             ArrayList<NumeralFormula.IntegerFormula> sumList = new ArrayList<>();
-            for (Direction d : this.getPossibleNeighbors(game, n.getRow(), n.getCol())) {
-                if (d == Direction.NORTH)
+            for (Direction dir : Direction.values()) { // TODO this was for (Direction dir : this.getPossibleNeighbors(game, i, j))
+                if (dir == Direction.NORTH)
                     sumList.add(
                             this.bmgr.ifThenElse(
                                     this.imgr.equal(
-                                            this.fieldVariables[n.getRow()-1][n.getCol()],
+                                            this.fieldVariables[n.getRow()][n.getCol()+1],
                                             this.imgr.makeNumber(3)
                                     ),
                                     this.imgr.makeNumber(1),
                                     this.bmgr.ifThenElse(
                                             this.imgr.equal(
-                                                    this.fieldVariables[n.getRow()-1][n.getCol()],
+                                                    this.fieldVariables[n.getRow()][n.getCol()+1],
                                                     this.imgr.makeNumber(4)
                                             ),
                                             this.imgr.makeNumber(2),
@@ -384,17 +372,17 @@ public class GridSolver {
                                     )
                             )
                     );
-                else if (d == Direction.EAST)
+                else if (dir == Direction.EAST)
                     sumList.add(
                             this.bmgr.ifThenElse(
                                     this.imgr.equal(
-                                            this.fieldVariables[n.getRow()][n.getCol()+1],
+                                            this.fieldVariables[n.getRow()+1][n.getCol()+2],
                                             this.imgr.makeNumber(1)
                                     ),
                                     this.imgr.makeNumber(1),
                                     this.bmgr.ifThenElse(
                                             this.imgr.equal(
-                                                    this.fieldVariables[n.getRow()][n.getCol()+1],
+                                                    this.fieldVariables[n.getRow()+1][n.getCol()+2],
                                                     this.imgr.makeNumber(2)
                                             ),
                                             this.imgr.makeNumber(2),
@@ -402,17 +390,17 @@ public class GridSolver {
                                     )
                             )
                     );
-                else if (d == Direction.SOUTH)
+                else if (dir == Direction.SOUTH)
                     sumList.add(
                             this.bmgr.ifThenElse(
                                     this.imgr.equal(
-                                            this.fieldVariables[n.getRow()+1][n.getCol()],
+                                            this.fieldVariables[n.getRow()+2][n.getCol()+1],
                                             this.imgr.makeNumber(3)
                                     ),
                                     this.imgr.makeNumber(1),
                                     this.bmgr.ifThenElse(
                                             this.imgr.equal(
-                                                    this.fieldVariables[n.getRow()+1][n.getCol()],
+                                                    this.fieldVariables[n.getRow()+2][n.getCol()+1],
                                                     this.imgr.makeNumber(4)
                                             ),
                                             this.imgr.makeNumber(2),
@@ -420,17 +408,17 @@ public class GridSolver {
                                     )
                             )
                     );
-                else if (d == Direction.WEST)
+                else if (dir == Direction.WEST)
                     sumList.add(
                             this.bmgr.ifThenElse(
                                     this.imgr.equal(
-                                            this.fieldVariables[n.getRow()][n.getCol()-1],
+                                            this.fieldVariables[n.getRow()+1][n.getCol()],
                                             this.imgr.makeNumber(1)
                                     ),
                                     this.imgr.makeNumber(1),
                                     this.bmgr.ifThenElse(
                                             this.imgr.equal(
-                                                    this.fieldVariables[n.getRow()][n.getCol()-1],
+                                                    this.fieldVariables[n.getRow()+1][n.getCol()],
                                                     this.imgr.makeNumber(2)
                                             ),
                                             this.imgr.makeNumber(2),
@@ -476,7 +464,7 @@ public class GridSolver {
     }
 
     // Set a γ variable equivalent to a direct bridge or to false if not applicable
-    private BooleanFormula areNodesConnectedInOneStep(int dest, Game game) {
+    private BooleanFormula areNodesConnectedInOneStep(int dest, Game game) { // dest is located at [row+1][col+1] in fieldvariables, so all fieldVariables +1
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination node
         for (Bridge b : neighbors) {
             if (b.getA().equals(game.getNodes().get(0)) && b.getA().getRow() == b.getB().getRow()){ // Only need to check one direction since node 0 is always in top left
@@ -485,11 +473,11 @@ public class GridSolver {
                         this.connectionVariables[dest][1],
                         this.bmgr.or(
                                 this.imgr.equal(
-                                        this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()+2],
                                         this.imgr.makeNumber(1)
                                 ),
                                 this.imgr.equal(
-                                        this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()+2],
                                         this.imgr.makeNumber(2)
                                 )
                         )
@@ -500,11 +488,11 @@ public class GridSolver {
                         this.connectionVariables[dest][1],
                         this.bmgr.or(
                                 this.imgr.equal(
-                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                        this.fieldVariables[b.getA().getRow()+2][b.getA().getCol()+1],
                                         this.imgr.makeNumber(3)
                                 ),
                                 this.imgr.equal(
-                                        this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                        this.fieldVariables[b.getA().getRow()+2][b.getA().getCol()+1],
                                         this.imgr.makeNumber(4)
                                 )
                         )
@@ -518,7 +506,7 @@ public class GridSolver {
     }
 
     // Set a γ variable equivalent to a shorter connection or express in neighbors perspective
-    private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) {
+    private BooleanFormula areNodesConnectedInISteps(int dest, int i, Game game) { // dest is located at [row+1][col+1] in fieldvariables, so all fieldVariables +1
         ArrayList<Bridge> neighbors = game.getBridgesFrom(game.getNodes().get(dest)); // Retrieve bridges connected to destination
         ArrayList<BooleanFormula> temp = new ArrayList<>(); // Temporary list of conjunctions (γ0,n3,i-1 /\ x*)
         for (Bridge b : neighbors) { // for every neighboring node describe what reaching destination from there means
@@ -531,11 +519,11 @@ public class GridSolver {
                                     this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()+2],
                                                     this.imgr.makeNumber(1)
                                             ),
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getA().getRow()][b.getA().getCol()+1],
+                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()+2],
                                                     this.imgr.makeNumber(2)
                                             )
                                     )
@@ -547,11 +535,11 @@ public class GridSolver {
                                     this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                                    this.fieldVariables[b.getA().getRow()+2][b.getA().getCol()+1],
                                                     this.imgr.makeNumber(3)
                                             ),
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getA().getRow()+1][b.getA().getCol()],
+                                                    this.fieldVariables[b.getA().getRow()+2][b.getA().getCol()+1],
                                                     this.imgr.makeNumber(4)
                                             )
                                     )
@@ -566,11 +554,11 @@ public class GridSolver {
                                     this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
+                                                    this.fieldVariables[b.getB().getRow()+1][b.getB().getCol()],
                                                     this.imgr.makeNumber(1)
                                             ),
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()-1],
+                                                    this.fieldVariables[b.getB().getRow()+1][b.getB().getCol()],
                                                     this.imgr.makeNumber(2)
                                             )
                                     )
@@ -582,11 +570,11 @@ public class GridSolver {
                                     this.connectionVariables[n3][i-1],
                                     this.bmgr.or(
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
+                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()+1],
                                                     this.imgr.makeNumber(3)
                                             ),
                                             this.imgr.equal(
-                                                    this.fieldVariables[b.getB().getRow()-1][b.getB().getCol()],
+                                                    this.fieldVariables[b.getB().getRow()][b.getB().getCol()+1],
                                                     this.imgr.makeNumber(4)
                                             )
                                     )
