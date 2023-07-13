@@ -82,7 +82,7 @@ public class GridSolver {
             }
         }
 
-        game.fillFieldNaive(solution);
+        game.fillFieldGridEncoding(solution);
 
 //        this.printConnectionVariables(game, model);
 

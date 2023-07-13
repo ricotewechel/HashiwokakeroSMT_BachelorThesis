@@ -5,10 +5,19 @@ public class Game {
     private int fieldSize;
     private char[][] field;
     private final ArrayList<Node> nodes;
-    private final ArrayList<Bridge> bridges = new ArrayList<>();
+    private final ArrayList<Bridge> bridges;
+
+
+    public Game(int fieldSize, ArrayList<Node> nodes, ArrayList<Bridge> bridges) {
+        this.fieldSize = fieldSize;
+        this.field = new char[this.fieldSize][this.fieldSize];
+        this.nodes = nodes;
+        this.bridges = bridges;
+    }
 
     public Game(String id) {
         this.nodes = parseID(id);
+        this.bridges = new ArrayList<>();
         for (Node node : this.nodes) { // Determine all possible bridges
             Bridge east = this.findBridgeEast(node);
             if (east != null)
@@ -100,8 +109,8 @@ public class Game {
         }
     }
 
-    // For improved encoding only
-    public void fillFieldImproved() {
+    // For improved encoding only (and generating)
+    public void fillFieldGraphEncoding() {
         // Fill field with node values (setup)
         for (Node n : this.nodes) {
             this.field[n.getRow()][n.getCol()] = (char) (n.getValue() + '0');
@@ -141,7 +150,7 @@ public class Game {
         }
     }
 
-    public void fillFieldNaive(BigInteger[][] solution) {
+    public void fillFieldGridEncoding(BigInteger[][] solution) {
         HashMap<BigInteger, Character> mapping = new HashMap<>() {{
             put(BigInteger.valueOf(0), ' ');
             put(BigInteger.valueOf(1), '─');
@@ -159,6 +168,14 @@ public class Game {
                 } else this.field[i][j] = mapping.get(solution[i][j]);
             }
         }
+    }
+
+    public void addNode(Node node) {
+        this.nodes.add(node);
+    }
+
+    public void addBridge(Bridge bridge) {
+        this.bridges.add(bridge);
     }
 
     public String toString() {

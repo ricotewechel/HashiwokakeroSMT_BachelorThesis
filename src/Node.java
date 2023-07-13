@@ -1,7 +1,7 @@
 public class Node{
     private final int col;
     private final int row;
-    private final int value;
+    private int value;
 
     public Node(int row, int col, int value) {
         this.row = row;
@@ -18,6 +18,10 @@ public class Node{
     }
 
     public int getValue() { return this.value; }
+
+    public void setValue(int val) {
+        this.value = val;
+    }
 
     public String toString() {
         return (Integer.toString(this.col) + '\t' + this.row + '\t' + this.value);

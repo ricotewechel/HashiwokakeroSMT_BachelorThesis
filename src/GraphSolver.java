@@ -80,7 +80,7 @@ public class GraphSolver {
         }
 
         game.setBridgeWeights(solution);
-        game.fillFieldImproved();
+        game.fillFieldGraphEncoding();
 
 //        this.printConnectionVariables(game, model);
 
