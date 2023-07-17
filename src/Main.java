@@ -8,27 +8,28 @@ public class Main {
         GraphSolver graphSolver = new GraphSolver();
         GridSolver gridSolver = new GridSolver();
 
-//        String filename = "generationTimes_" + args[2] + "_" +  args[0] + "x" +  args[0] + "_" +  args[1];
-//        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+        // Arguments should be (size, nodes, solver)
+        String filename = "generationTimes_" + args[2] + "_" +  args[0] + "x" +  args[0] + "_" +  args[1];
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
 
         Generator generator = new Generator();
         int i = 0;
         while (i < 101) {
-//            ArrayList<ArrayList<Long>> data = generator.generateGames(Integer.parseInt(args[0]), Integer.parseInt(args[1]), args[2]);
-//            writer.write("Max newnode, uniquectr: " + data.get(0) + "\n");
-//            writer.write("Loop times: " + data.get(1) + "\n");
-//            writer.write("Unique times: " + data.get(2) + "\n");
-//            writer.write("Diff times: " + data.get(3) + "\n\n");
+            ArrayList<ArrayList<Long>> data = generator.generateGames(Integer.parseInt(args[0]), Integer.parseInt(args[1]), args[2]);
+            writer.write("Max newnode, uniquectr: " + data.get(0) + "\n");
+            writer.write("Loop times: " + data.get(1) + "\n");
+            writer.write("Unique times: " + data.get(2) + "\n");
+            writer.write("Diff times: " + data.get(3) + "\n\n");
 
-            ArrayList<ArrayList<Long>> data = generator.generateGames(15, 36, "Graph");
-            System.out.println(data.get(0));
-            System.out.println(data.get(1));
-            System.out.println(data.get(2));
-            System.out.println(data.get(3) + "\n");
+//            ArrayList<ArrayList<Long>> data = generator.generateGames(15, 36, "Graph");
+//            System.out.println(data.get(0));
+//            System.out.println(data.get(1));
+//            System.out.println(data.get(2));
+//            System.out.println(data.get(3) + "\n");
 
             i++;
         }
-//        writer.close();
+        writer.close();
 
 
 

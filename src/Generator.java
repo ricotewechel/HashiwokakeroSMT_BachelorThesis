@@ -52,7 +52,7 @@ public class Generator {
                     game.removeBridges(); // Remove all bridges to change solution into puzzle
                     game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
 //                    System.out.println(game);
-                    System.out.println(this.convertToID(game));
+                    System.out.println(this.convertToID(game) + "\n");
 
                     maximums.add(maxTriesForNewNode);
                     maximums.add(maxTriesForUniqueSolution);
@@ -128,7 +128,7 @@ public class Generator {
         game.removeBridges(); // Remove all bridges to change solution into puzzle
         game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
 //        System.out.println(game);
-        System.out.println(this.convertToID(game));
+        System.out.println(this.convertToID(game) + "\n");
 
         maximums.add(maxTriesForNewNode);
         maximums.add(maxTriesForUniqueSolution);
