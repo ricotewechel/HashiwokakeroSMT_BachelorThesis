@@ -1,4 +1,6 @@
-public class Node{
+import java.io.Serializable;
+
+public class Node implements Serializable {
     private final int col;
     private final int row;
     private int value;
@@ -24,7 +26,7 @@ public class Node{
     }
 
     public String toString() {
-        return (Integer.toString(this.col) + '\t' + this.row + '\t' + this.value);
+        return (Integer.toString(this.row) + '\t' + this.col + '\t' + this.value);
     }
 
     @Override

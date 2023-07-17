@@ -1,6 +1,7 @@
+import java.io.Serializable;
 import java.math.BigInteger;
 
-public class Bridge {
+public class Bridge implements Serializable {
     private final Node a;
     private final Node b;
     private BigInteger weight;
@@ -40,16 +41,23 @@ public class Bridge {
     public String toString() {
         if (this.weight.intValue() == 1) {
             if (this.direction == Direction.HORIZONTAL)
-                return (this.a.getCol() + "\t" + this.a.getRow() + "\t\t" + "─" + "\t\t" + this.b.getCol() + "\t" + this.b.getRow());
+                return (this.a.getRow() + "\t" + this.a.getCol() + "\t\t" + "─" + "\t\t" + this.b.getRow() + "\t" + this.b.getCol());
             else if (this.direction == Direction.VERTICAL)
-                return (this.a.getCol() + "\t" + this.a.getRow() + "\t\t" + "|" + "\t\t" + this.b.getCol() + "\t" + this.b.getRow());
+                return (this.a.getRow() + "\t" + this.a.getCol() + "\t\t" + "|" + "\t\t" + this.b.getRow() + "\t" + this.b.getCol());
             else return "";
         } else if (this.weight.intValue() == 2) {
             if (this.direction == Direction.HORIZONTAL)
-                return (this.a.getCol() + "\t" + this.a.getRow() + "\t\t" + "═" + "\t\t" + this.b.getCol() + "\t" + this.b.getRow());
+                return (this.a.getRow() + "\t" + this.a.getCol() + "\t\t" + "═" + "\t\t" + this.b.getRow() + "\t" + this.b.getCol());
             else if (this.direction == Direction.VERTICAL)
-                return (this.a.getCol() + "\t" + this.a.getRow() + "\t\t" + "‖" + "\t\t" + this.b.getCol() + "\t" + this.b.getRow());
+                return (this.a.getRow() + "\t" + this.a.getCol() + "\t\t" + "‖" + "\t\t" + this.b.getRow() + "\t" + this.b.getCol());
             else return "";
         } else return "";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Bridge bridge))
+            return false;
+        return this.getA().equals(bridge.getA()) && this.getB().equals(bridge.getB());
     }
 }

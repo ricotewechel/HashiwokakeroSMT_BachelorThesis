@@ -87,6 +87,29 @@ public class GraphSolver {
         return times;
     }
 
+    public Boolean hasUniqueSolution (Game game) {
+        this.createVariables(game);
+
+        try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
+            ArrayList<BooleanFormula> solList = new ArrayList<>();
+            for (int i = 0; i < this.bridgeVariables.length; i++) {
+                solList.add(this.imgr.equal(this.bridgeVariables[i], this.imgr.makeNumber(game.getBridges().get(i).getWeight())));
+            }
+            BooleanFormula isNotFirstSolution = this.bmgr.not(this.bmgr.and(solList));
+
+            // Add constraints
+            prover.addConstraint(isNotFirstSolution);
+            prover.addConstraint(this.validBridgeSizesConstraint());
+            prover.addConstraint(this.bridgesDontCrossConstraint(game));
+            prover.addConstraint(this.nodesSatisfiedConstraint(game));
+            prover.addConstraint(this.nodesConnectedConstraint(game));
+
+            return prover.isUnsat();
+        } catch (SolverException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private void createVariables(Game game) {
         // Create variables for each potential bridge (a.k.a. moves to make)
@@ -190,7 +213,7 @@ public class GraphSolver {
                 }
             }
         }
-        return bmgr.and(everythingConnectedList);
+        return this.bmgr.and(everythingConnectedList);
     }
 
     // Set a γ to true (if 0 == destination (vacuously) or if γx,y,n-1 (force connectedness))
@@ -235,7 +258,7 @@ public class GraphSolver {
                             this.connectionVariables[n3][i-1],
                             this.imgr.greaterThan(
                                     this.bridgeVariables[game.getBridges().indexOf(b)],
-                                    imgr.makeNumber(0)
+                                    this.imgr.makeNumber(0)
                             )
                     )
             );
@@ -256,13 +279,13 @@ public class GraphSolver {
         boolean[][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()];
         for (int n = 0; n < (game.getNodes().size()); n++) {
             for (int i = 1; i < (game.getNodes().size()); i++) {
-                solution2[n][i] = model.evaluate(connectionVariables[n][i]);
+                solution2[n][i] = model.evaluate(this.connectionVariables[n][i]);
             }
         }
 
         for (int n = 0; n < (game.getNodes().size()); n++) {
             for (int i = 1; i < (game.getNodes().size()); i++) {
-                System.out.println(connectionVariables[n][i] + ": " + solution2[n][i]);
+                System.out.println(this.connectionVariables[n][i] + ": " + solution2[n][i]);
             }
         }
     }

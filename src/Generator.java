@@ -1,8 +1,12 @@
+import org.sosy_lab.common.configuration.InvalidConfigurationException;
 import java.math.BigInteger;
 import java.util.*;
 
 public class Generator {
     private final Random random;
+    private final GraphSolver graphSolver = new GraphSolver();
+    private final GridSolver gridSolver= new GridSolver();
+
     private enum Direction {
         NORTH,
         EAST,
@@ -10,46 +14,132 @@ public class Generator {
         WEST
     }
 
-    public Generator() {
+    public Generator() throws InvalidConfigurationException {
         this.random = new Random();
     }
 
-    public Game generateGame(int fieldSize, int nodeCount) {
-        Game game = new Game(fieldSize, new ArrayList<>(), new ArrayList<>());
-        game.addNode(new Node(this.random.nextInt(fieldSize), this.random.nextInt(fieldSize), 0));
-        int i = 1;
-        while (i < nodeCount) {
-            int triesForNewNode = 0;
-            Node n = null;
-            Node newNode = null;
+    public ArrayList<ArrayList<Long>> generateGames(int fieldSize, int nodeGoal, String encoding) {
+        Game game = new Game(fieldSize, new ArrayList<>(), new ArrayList<>()); // Start with empty game
+        game.addNode(new Node(this.random.nextInt(fieldSize), this.random.nextInt(fieldSize), 0)); // Place initial node at random
+        int nodeCount = 1; // Keeps track of how many nodes have been placed
+        int triesForUniqueSolution = 0; // Keeps track of how many tries ware made to get a uniquely solvable puzzle
 
+        ArrayList<Long> maximums = new ArrayList<>(); // Keeps track of results (maxTriesForNewNode, maxTriesForUniqueSol)
+        ArrayList<Long> looptimes = new ArrayList<>(); // Keeps track of total time spent per loop
+        ArrayList<Long> uniquetimes = new ArrayList<>(); // Keeps track of total time spent per call of checkUniquelySolvable
+        ArrayList<Long> differences = new ArrayList<>(); // Keeps track of total
+        long maxTriesForUniqueSolution = 0;
+        long maxTriesForNewNode = 0;
+        long t0 = 0;
+        long looptime = 0;
+        long t1 = 0;
+        long uniquetime = 0;
+        long difference = 0;
+
+        while (nodeCount < nodeGoal && triesForUniqueSolution < 1000) {
+            t0 = System.currentTimeMillis();
+            Game copy = new Game(game); // For restoring to state WITHOUT new node and bridges if not uniquely solvable after adding node
+
+            // Search for a potential new node to place, reachable from current game state
+            int triesForNewNode = 0; // Keeps track of how many times placing a new node was tried
+            Node n = null; // The source node
+            Node newNode = null; // The new node
             while (newNode == null) { // Loop until a valid new node has been found to place
+                if (triesForNewNode >= 1000) { // Above this threshold we conclude no new node can be placed that meets the conditions
+                    System.out.println("ERROR: " + game.getNodes().size() + "/" + nodeGoal + " nodes were able to be placed:");
+                    // Finish up and return the game
+                    this.setNodeValues(game); // Count all bridge weights to determine node values
+                    game.removeBridges(); // Remove all bridges to change solution into puzzle
+                    game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
+//                    System.out.println(game);
+                    System.out.println(this.convertToID(game));
+
+                    maximums.add(maxTriesForNewNode);
+                    maximums.add(maxTriesForUniqueSolution);
+                    return new ArrayList<>() {
+                        {
+                            add(maximums);
+                            add(looptimes);
+                            add(uniquetimes);
+                            add(differences);
+                        }
+                    };
+                }
                 n = game.getNodes().get(this.random.nextInt(game.getNodes().size())); // Choose random node to work from
                 newNode = chooseNewRandomNode(n, fieldSize, game); // Place random new node. Returns null if there is no possible new bridge and node to place from n
                 triesForNewNode++;
-                if (this.isNextToNode(newNode, game)) // If the chosen node happens to be next to another node, retry
-                    newNode = null;
-                if (triesForNewNode > 1000) { // Above this threshold we conclude no new node can be placed that meets the conditions
-                    System.out.println("ERROR: " + game.getNodes().size() + "/" + nodeCount + " nodes were able to be placed:");
-                    this.setNodeValues(game); // Finish up and return the game
-                    game.fillFieldGraphEncoding();
-                    return game;
-                }
+                maxTriesForNewNode = Math.max(maxTriesForNewNode, triesForNewNode);
             }
-            game.addNode(newNode); // Add new node to list of game nodes.
-            this.placeBridge(n, newNode, game, 1, 2); // Place a bridge between the two nodes with a random weight (1 or 2)
 
+            // Actually add the new node and bridge to the game
+            game.addNode(newNode); // Add new node to list of game nodes.
+            this.placeBridge(n, newNode, game); // Place a bridge between the two nodes with a random weight (1 or 2)
+
+            // Generate random bridges from newly created node to reachable nodes (this creates loops)
             int go;
-            for (Node neighborNode : this.getNeighbors(newNode, getRespectiveDirection(n, newNode), game)) { // For all nodes that can be reached from the new node
-                go = this.random.nextInt(2); // 50% chance to set bridge or not (this creates loops)
+            for (Node neighborNode : this.getNeighbors(newNode, getRespectiveDirection(n, newNode), game)) { // For all nodes that can be reached from the new node (excluding source node)
+                go = this.random.nextInt(2); // 50% chance to set bridge or not
                 if (go == 1)
-                    this.placeBridge(newNode, neighborNode, game, 1, 2); // Place a bridge between the two nodes with a random weight (1 or 2)
+                    this.placeBridge(newNode, neighborNode, game); // Place a bridge between the two nodes with a random weight (1 or 2)
             }
-            i++;
+
+            Game copy2 = new Game(game); // For restoring to state WITH new node and bridges if still uniquely solvable after adding node
+
+            // Check if game is still uniquely solvable. Continue if so, undo changes to last uniquely solvalbe state ('copy')
+            t1 = System.currentTimeMillis();
+            if(!this.checkUniquelySolvable(game, encoding)) {
+                uniquetime = System.currentTimeMillis() - t1;
+                uniquetimes.add(uniquetime);
+
+                triesForUniqueSolution++;
+                maxTriesForUniqueSolution = Math.max(maxTriesForUniqueSolution, triesForUniqueSolution);
+                game = copy; // If not uniquely solvable, restore game to state WITHOUT new node and bridges
+            } else {
+                uniquetime = System.currentTimeMillis() - t1;
+                uniquetimes.add(uniquetime);
+
+                triesForUniqueSolution = 0;
+                nodeCount++;
+                game = copy2; // If uniquely solvable, restore game to state WITH new node and bridges
+            }
+            looptime = System.currentTimeMillis() - t0;
+            looptimes.add(looptime);
+            difference = looptime - uniquetime;
+            differences.add(difference);
         }
-        this.setNodeValues(game);
-        game.fillFieldGraphEncoding();
-        return game;
+
+        if (triesForUniqueSolution >= 1000) {
+            System.out.println("Uniquely solvable puzzle not found in this iteration");
+
+            maximums.add(maxTriesForNewNode);
+            maximums.add(maxTriesForUniqueSolution);
+            return new ArrayList<>() {
+                {
+                    add(maximums);
+                    add(looptimes);
+                    add(uniquetimes);
+                    add(differences);
+                }
+            };
+        }
+
+        // Finish up and return the game
+        this.setNodeValues(game); // Count all bridge weights to determine node values
+        game.removeBridges(); // Remove all bridges to change solution into puzzle
+        game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
+//        System.out.println(game);
+        System.out.println(this.convertToID(game));
+
+        maximums.add(maxTriesForNewNode);
+        maximums.add(maxTriesForUniqueSolution);
+        return new ArrayList<>() {
+            {
+                add(maximums);
+                add(looptimes);
+                add(uniquetimes);
+                add(differences);
+            }
+        };
     }
 
     // Given a node and a square field's size, return a random node that's reachable from at least one existing node
@@ -61,7 +151,7 @@ public class Generator {
         int offset;
         Node newNode;
         if (dir == Direction.NORTH) {
-            offset = 2 + random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
+            offset = 2 + this.random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
                     Math.min( // Lowest number decides available space
                             node.getRow()-1, Math.min( // Reach border
                             node.getRow()-this.getNearestNode(node, Direction.NORTH, game).getRow()-3,
@@ -69,7 +159,7 @@ public class Generator {
                     )));
             newNode = new Node(node.getRow() - offset, node.getCol(), 0);
         } else if (dir == Direction.EAST) {
-            offset = 2 + random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
+            offset = 2 + this.random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
                     Math.min( // Lowest number decides available space
                             (size-2) - node.getCol(), Math.min( // Reach border
                             this.getNearestNode(node, Direction.EAST, game).getCol()-node.getCol()-3,
@@ -77,7 +167,7 @@ public class Generator {
                     )));
             newNode = new Node(node.getRow(), node.getCol() + offset, 0);
         } else if (dir == Direction.SOUTH) {
-            offset = 2 + random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
+            offset = 2 + this.random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
                     Math.min( // Lowest number decides available space
                             (size-2) - node.getRow(), Math.min( // Reach border
                             this.getNearestNode(node, Direction.SOUTH, game).getRow()-node.getRow()-3,
@@ -85,7 +175,7 @@ public class Generator {
                     )));
             newNode = new Node(node.getRow() + offset, node.getCol(), 0);
         } else { // if (dir == Direction.WEST)
-            offset = 2 + random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
+            offset = 2 + this.random.nextInt( // New node must be 2 spaces away from original node, + buffer space to next obstacle
                     Math.min( // Lowest number decides available space
                             node.getCol() - 1, Math.min( // Reach border
                             node.getCol()-this.getNearestNode(node, Direction.WEST, game).getCol()-3,
@@ -93,6 +183,8 @@ public class Generator {
                     )));
             newNode = new Node(node.getRow(), node.getCol() - offset, 0);
         }
+        if (this.isNextToNode(newNode, game)) // If the chosen node happens to be next to another node, retry
+            return null;
         return newNode;
     }
 
@@ -123,16 +215,16 @@ public class Generator {
         return dirs;
     }
 
-    // Given a node and a direction, returns if there is a adjacent bridge present in that direction or not
+    // Given a node and a direction, returns if there is an adjacent bridge present in that direction or not
     private Boolean bridgePresent(Node node, Direction dir, Game game) {
         if (dir == Direction.NORTH) {
-            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.VERTICAL && b.getB() == node).toList().size() > 0);
+            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.VERTICAL && b.getB().equals(node)).toList().size() > 0);
         } else if (dir == Direction.EAST) {
-            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.HORIZONTAL && b.getA() == node).toList().size() > 0);
+            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.HORIZONTAL && b.getA().equals(node)).toList().size() > 0);
         } else if (dir == Direction.SOUTH) {
-            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.VERTICAL && b.getA() == node).toList().size() > 0);
+            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.VERTICAL && b.getA().equals(node)).toList().size() > 0);
         } else { // if (dir == Direction.WEST)
-            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.HORIZONTAL && b.getB() == node).toList().size() > 0);
+            return (game.getBridgesFrom(node).stream().filter(b -> b.getDirection() == Bridge.Direction.HORIZONTAL && b.getB().equals(node)).toList().size() > 0);
         }
     }
 
@@ -174,7 +266,7 @@ public class Generator {
         }
     }
 
-    // Given a node, return a list of all nodes reachable from this node (so no obstructions by other nodes or bridges)
+    // Given a node, returns a list of all nodes reachable from this node (so no obstructions by other nodes or bridges)
     private ArrayList<Node> getNeighbors(Node node, Direction dir, Game game) {
         ArrayList<Node> neighbors = new ArrayList<>();
         for (Direction togo : Arrays.stream(Direction.values()).filter(d -> !(d == dir)).toList()) { // Filter out the direction where we came from
@@ -245,15 +337,15 @@ public class Generator {
     }
 
     // Based on n1's direction with respect to n2, adds bridge to game with the correct endpoints and orientations
-    private void placeBridge(Node n1, Node n2, Game game, int min, int max) { // TODO minmax not needed
+    private void placeBridge(Node n1, Node n2, Game game) {
         if (getRespectiveDirection(n1, n2) == Direction.NORTH) {
-            game.addBridge(new Bridge(n1, n2, BigInteger.valueOf(this.random.nextInt(max+1 - min) + min), Bridge.Direction.VERTICAL));
+            game.addBridge(new Bridge(n1, n2, BigInteger.valueOf(this.random.nextInt(2) + 1), Bridge.Direction.VERTICAL));
         } else if (getRespectiveDirection(n1, n2) == Direction.EAST) {
-            game.addBridge(new Bridge(n2, n1, BigInteger.valueOf(this.random.nextInt(max+1 - min) + min), Bridge.Direction.HORIZONTAL));
+            game.addBridge(new Bridge(n2, n1, BigInteger.valueOf(this.random.nextInt(2) + 1), Bridge.Direction.HORIZONTAL));
         } else if (getRespectiveDirection(n1, n2) == Direction.SOUTH) {
-            game.addBridge(new Bridge(n2, n1, BigInteger.valueOf(this.random.nextInt(max+1 - min) + min), Bridge.Direction.VERTICAL));
+            game.addBridge(new Bridge(n2, n1, BigInteger.valueOf(this.random.nextInt(2) + 1), Bridge.Direction.VERTICAL));
         } else { // if (getRespectiveDirection(n1, n2) == Direction.WEST)
-            game.addBridge(new Bridge(n1, n2, BigInteger.valueOf(this.random.nextInt(max+1 - min) + min), Bridge.Direction.HORIZONTAL));
+            game.addBridge(new Bridge(n1, n2, BigInteger.valueOf(this.random.nextInt(2) + 1), Bridge.Direction.HORIZONTAL));
         }
     }
 
@@ -269,10 +361,64 @@ public class Generator {
     private void setNodeValues(Game game) {
         for (Node n : game.getNodes()) {
             int total = 0;
-            for (Bridge b : game.getBridgesFrom(n)) {
+            for (Bridge b : game.getBridgesFrom(n))
                 total += b.getWeight().intValue();
-            }
             n.setValue(total);
         }
+    }
+
+    private Boolean checkUniquelySolvable(Game game, String solver) {
+        this.setNodeValues(game);
+        game.sortNodes();
+        game.setPossibleBridges();
+        game.setNullBridgesToZero();
+        game.sortBridges();
+        switch (solver) {
+            case "Graph" -> {
+                return this.graphSolver.hasUniqueSolution(game);
+            }
+            case "Grid" -> {
+                return this.gridSolver.hasUniqueSolution(game);
+            }
+            default -> {
+                System.out.println("No such solver");
+                return null;
+            }
+        }
+    }
+
+    private String convertToID (Game game) {
+        StringBuilder s = new StringBuilder();
+        s.append(game.getFieldSize()).append("x").append(game.getFieldSize()); // Append puzzle size
+        s.append("m2:"); // Append maximum bridge weight (static) with + colon separator
+        char[][] field = game.getField();
+        int count = 0;
+        for (int i = 0; i < field.length; i++) {
+            for (int j = 0; j < field.length; j++) {
+                char c = field[i][j];
+                if (Character.isDigit(c)) {
+                    s.append(this.getSpacesString(count));
+                    count = 0;
+                    s.append(c);
+                }
+                else
+                    count++;
+            }
+        }
+        if (count > 0)
+            s.append(this.getSpacesString(count));
+        return s.toString();
+    }
+
+    private String getSpacesString (int ctr) {
+        StringBuilder s = new StringBuilder();
+        while (ctr >= 26) {
+            s.append('z');
+            ctr -= 26;
+        }
+        if (ctr > 0) {
+            s.append(Character.toString((char) ctr + 96));
+        }
+        return s.toString();
     }
 }

@@ -7,7 +7,6 @@ import org.sosy_lab.java_smt.SolverContextFactory;
 import org.sosy_lab.java_smt.api.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class GridSolver {
     private final SolverContext context;
@@ -15,6 +14,7 @@ public class GridSolver {
     private final IntegerFormulaManager imgr;
     private NumeralFormula.IntegerFormula[][] fieldVariables;
     private BooleanFormula[][] connectionVariables;
+
     public GridSolver() throws InvalidConfigurationException {
         Configuration config = Configuration.defaultConfiguration();
         LogManager logger = BasicLogManager.create(config);
@@ -87,56 +87,36 @@ public class GridSolver {
 //        this.printConnectionVariables(game, model);
 
         return times;
+    }
 
-//        // Solution using validCellsConstraint2:
-//        this.createVariables(secondgame);
-//
-//        ArrayList<BooleanFormula> solList = new ArrayList<>();
-//        for (int i = 0; i < secondgame.getFieldSize(); i++) {
-//            for (int j = 0; j < secondgame.getFieldSize(); j++) {
-//                solList.add(this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(solution[i][j])));
-//            }
-//        }
-//
-//        BooleanFormula isNotFirstSolution = this.bmgr.not(this.bmgr.and(solList));
-//
-//
-//        // Solve with SMT solver
-//        Model model2 = null;
-//        try (ProverEnvironment prover2 = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
-//            // Add constraints
-//            prover2.addConstraint(validCellsConstraint2(secondgame));
-//            prover2.addConstraint(neighborConstraint(secondgame));
-//            prover2.addConstraint(nodesSatisfiedConstraint(secondgame));
-//            prover2.addConstraint(nodesConnectedConstraint(secondgame));
-//
-//            prover2.addConstraint(isNotFirstSolution);
-//
-//            boolean isUnsat = prover2.isUnsat();
-//            if (!isUnsat) {
-//                model2 = prover2.getModel();
-//            }
-//        } catch (SolverException | InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//        assert model2 != null;
-//
-//        // Retrieve solution
-//        try {
-//            BigInteger[][] solution2 = new BigInteger[secondgame.getFieldSize()][secondgame.getFieldSize()];
-//            for (int i = 0; i < secondgame.getFieldSize(); i++) {
-//                for (int j = 0; j < secondgame.getFieldSize(); j++) {
-//                    solution2[i][j] = model2.evaluate(this.fieldVariables[i][j]);
-//                }
-//            }
-//            secondgame.fillFieldNaive(solution2);
-//        } catch (NullPointerException ignored) {
-//            System.out.println("Unique solution");
-//        }
+    public Boolean hasUniqueSolution (Game game) {
+        this.createVariables(game);
 
+        try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
+            BigInteger[][] encoding = game.getFieldEncoding();
+            ArrayList<BooleanFormula> solList = new ArrayList<>();
 
-//        this.printConnectionVariables(game, model);
+            for (int i = 0; i < this.fieldVariables.length; i++) {
+                for (int j = 0; j < this.fieldVariables.length; j++) {
+                    if (i == 0 || j == 0 || i == game.getFieldSize()+1 || j == game.getFieldSize()+1)
+                        solList.add(this.imgr.equal(this.fieldVariables[i][j], this.imgr.makeNumber(0)));
+                    else
+                        solList.add(this.imgr.equal(this.fieldVariables[i][j], this.imgr.makeNumber(encoding[i-1][j-1])));
+                }
+            }
+            BooleanFormula isNotFirstSolution = this.bmgr.not(this.bmgr.and(solList));
+
+            // Add constraints
+            prover.addConstraint(isNotFirstSolution);
+            prover.addConstraint(this.validCellsConstraint1(game));
+            prover.addConstraint(this.neighborConstraint(game));
+            prover.addConstraint(this.nodesSatisfiedConstraint(game));
+            prover.addConstraint(this.nodesConnectedConstraint(game));
+
+            return prover.isUnsat();
+        } catch (SolverException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -190,7 +170,7 @@ public class GridSolver {
                     Node n = new Node(row-1, col-1, 0);
                     if (game.getNodes().contains(n)) {
                         validCellsList.add(
-                                this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(5))
                         );
                     } else { // All other cells can be other pieces
                         validCellsList.add(
@@ -228,7 +208,7 @@ public class GridSolver {
                     Node n = new Node(row-1, col-1, 0);
                     if (game.getNodes().contains(n)) {
                         validCellsList.add(
-                                this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5))
+                                this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(5))
                         );
                     } else { // All other cells can be other pieces AND SHOULD NOT BE A NODE
                         validCellsList.add(
@@ -238,7 +218,7 @@ public class GridSolver {
                                 )
                         );
                         validCellsList.add( // Adding this proposition explicitly significantly improves speed (Only in old encoding without boundaries?)
-                                this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], imgr.makeNumber(5)))
+                                this.bmgr.not(this.imgr.equal(this.fieldVariables[row][col], this.imgr.makeNumber(5)))
                         );
                     }
                 }
@@ -256,7 +236,7 @@ public class GridSolver {
                 for (int p = 1; p <= 4; p++) {
                     neighborList.add(
                             this.bmgr.implication(
-                                    this.imgr.equal(this.fieldVariables[i][j], imgr.makeNumber(p)),
+                                    this.imgr.equal(this.fieldVariables[i][j], this.imgr.makeNumber(p)),
                                     this.bmgr.and(
                                             getNeighborRestrictionList(i, j, p)
                                     )
@@ -274,27 +254,27 @@ public class GridSolver {
         if (piece == 1 || piece == 2) { // ─ or ═
             neighborRestrictionList.add(
                     this.bmgr.or(
-                            this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(piece)), // same piece west
-                            this.imgr.equal(this.fieldVariables[i][j-1], imgr.makeNumber(5)) // cell west
+                            this.imgr.equal(this.fieldVariables[i][j-1], this.imgr.makeNumber(piece)), // same piece west
+                            this.imgr.equal(this.fieldVariables[i][j-1], this.imgr.makeNumber(5)) // cell west
                     )
             );
             neighborRestrictionList.add(
                     this.bmgr.or(
-                            this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(piece)), // same piece east
-                            this.imgr.equal(this.fieldVariables[i][j+1], imgr.makeNumber(5)) // cell east
+                            this.imgr.equal(this.fieldVariables[i][j+1], this.imgr.makeNumber(piece)), // same piece east
+                            this.imgr.equal(this.fieldVariables[i][j+1], this.imgr.makeNumber(5)) // cell east
                     )
             );
         } else if (piece == 3 || piece == 4) { // | or ‖
             neighborRestrictionList.add(
                     this.bmgr.or(
-                            this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(piece)), // same piece north
-                            this.imgr.equal(this.fieldVariables[i-1][j], imgr.makeNumber(5)) // cell north
+                            this.imgr.equal(this.fieldVariables[i-1][j], this.imgr.makeNumber(piece)), // same piece north
+                            this.imgr.equal(this.fieldVariables[i-1][j], this.imgr.makeNumber(5)) // cell north
                     )
             );
             neighborRestrictionList.add(
                     this.bmgr.or(
-                            this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(piece)), // same piece south
-                            this.imgr.equal(this.fieldVariables[i+1][j], imgr.makeNumber(5)) // cell south
+                            this.imgr.equal(this.fieldVariables[i+1][j], this.imgr.makeNumber(piece)), // same piece south
+                            this.imgr.equal(this.fieldVariables[i+1][j], this.imgr.makeNumber(5)) // cell south
                     )
             );
         }
@@ -409,7 +389,7 @@ public class GridSolver {
                 }
             }
         }
-        return bmgr.and(everythingConnectedList);
+        return this.bmgr.and(everythingConnectedList);
     }
 
     // Set a γ to true (if 0 == destination (vacuously) or if γx,y,n-1 (force connectedness))
@@ -552,13 +532,13 @@ public class GridSolver {
         boolean[][] solution2 = new boolean[game.getNodes().size()][game.getNodes().size()];
         for (int n = 0; n < (game.getNodes().size()); n++) {
             for (int i = 1; i < (game.getNodes().size()); i++) {
-                solution2[n][i] = model.evaluate(connectionVariables[n][i]);
+                solution2[n][i] = model.evaluate(this.connectionVariables[n][i]);
             }
         }
 
         for (int n = 0; n < (game.getNodes().size()); n++) {
             for (int i = 1; i < (game.getNodes().size()); i++) {
-                System.out.println(connectionVariables[n][i] + ": " + solution2[n][i]);
+                System.out.println(this.connectionVariables[n][i] + ": " + solution2[n][i]);
             }
         }
     }
