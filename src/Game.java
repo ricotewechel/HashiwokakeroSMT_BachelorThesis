@@ -22,7 +22,7 @@ public class Game implements Serializable {
         this.setNullBridgesToZero();
     }
 
-    public Game(Game other) {
+    public Game(Game other) { // Copy constructor
         this.fieldSize = other.getFieldSize();
         this.field = new char[this.fieldSize][this.fieldSize];
 

@@ -121,25 +121,27 @@ public class Generator {
                     add(differences);
                 }
             };
+        } else {
+            // Finish up and return the game
+            this.setNodeValues(game); // Count all bridge weights to determine node values
+            game.removeBridges(); // Remove all bridges to change solution into puzzle
+            game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
+//        System.out.println(game);
+            System.out.println(this.convertToID(game) + "\n");
+
+            maximums.add(maxTriesForNewNode);
+            maximums.add(maxTriesForUniqueSolution);
+            return new ArrayList<>() {
+                {
+                    add(maximums);
+                    add(looptimes);
+                    add(uniquetimes);
+                    add(differences);
+                }
+            };
         }
 
-        // Finish up and return the game
-        this.setNodeValues(game); // Count all bridge weights to determine node values
-        game.removeBridges(); // Remove all bridges to change solution into puzzle
-        game.fillFieldGraphEncoding(); // Use graph encoding's fillField to make game printable
-//        System.out.println(game);
-        System.out.println(this.convertToID(game) + "\n");
 
-        maximums.add(maxTriesForNewNode);
-        maximums.add(maxTriesForUniqueSolution);
-        return new ArrayList<>() {
-            {
-                add(maximums);
-                add(looptimes);
-                add(uniquetimes);
-                add(differences);
-            }
-        };
     }
 
     // Given a node and a square field's size, return a random node that's reachable from at least one existing node

@@ -8,49 +8,29 @@ public class Main {
         GraphSolver graphSolver = new GraphSolver();
         GridSolver gridSolver = new GridSolver();
 
-        // Arguments should be (size, nodes, solver)
-        String filename = "generationTimes_" + args[2] + "_" +  args[0] + "x" +  args[0] + "_" +  args[1];
-        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-
-        Generator generator = new Generator();
-        int i = 0;
-        while (i < 101) {
-            ArrayList<ArrayList<Long>> data = generator.generateGames(Integer.parseInt(args[0]), Integer.parseInt(args[1]), args[2]);
-            writer.write("Max newnode, uniquectr: " + data.get(0) + "\n");
-            writer.write("Loop times: " + data.get(1) + "\n");
-            writer.write("Unique times: " + data.get(2) + "\n");
-            writer.write("Diff times: " + data.get(3) + "\n\n");
-
-//            ArrayList<ArrayList<Long>> data = generator.generateGames(15, 36, "Graph");
-//            System.out.println(data.get(0));
-//            System.out.println(data.get(1));
-//            System.out.println(data.get(2));
-//            System.out.println(data.get(3) + "\n");
-
-            i++;
-        }
-        writer.close();
-
-
-
-        //        // Write results to file
-//        String filename = "times_" + args[0].substring(args[0].lastIndexOf('/')+1);
+//        // Arguments should be (size, nodes, solver)
+//        String filename = "generationTimes_" + args[2] + "_" +  args[0] + "x" +  args[0] + "_" +  args[1];
 //        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-//        ArrayList<Long> times;
-//        for (String s : puzzles) {
-//            writer.write(s + "\n");
 //
-//            Game a = new Game(s);
-//            times = graphSolver.solveGame(a);
-//            writer.write("Graph:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
+//        Generator generator = new Generator();
+//        int i = 0;
+//        while (i < 101) {
+//            ArrayList<ArrayList<Long>> data = generator.generateGames(Integer.parseInt(args[0]), Integer.parseInt(args[1]), args[2]);
+//            writer.write("Max newnode, uniquectr: " + data.get(0) + "\n");
+//            writer.write("Loop times: " + data.get(1) + "\n");
+//            writer.write("Unique times: " + data.get(2) + "\n");
+//            writer.write("Diff times: " + data.get(3) + "\n\n");
 //
-//            Game b = new Game(s);
-//            times = gridSolver.solveGame(b);
-//            writer.write("Grid:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
+////            ArrayList<ArrayList<Long>> data = generator.generateGames(15, 36, "Graph");
+////            System.out.println(data.get(0));
+////            System.out.println(data.get(1));
+////            System.out.println(data.get(2));
+////            System.out.println(data.get(3) + "\n");
 //
-//            writer.write("Equal solution:\t" + a.toString().equals(b.toString()) + "\n");
+//            i++;
 //        }
 //        writer.close();
+
 
 
 
@@ -71,41 +51,41 @@ public class Main {
 //        };
 
 
-//        // Scan file for puzzle IDs, create list
-//        ArrayList<String> puzzles = new ArrayList<>();
-//        try {
-//            File file = new File(args[0]);
-//            Scanner scanner = new Scanner(file);
-//            while (scanner.hasNextLine()) {
-//                puzzles.add(scanner.nextLine());
-//            }
-//            scanner.close();
-//        } catch (FileNotFoundException e) {
-//            System.out.println("An error occurred.");
-//            e.printStackTrace();
-//        }
+        // Scan file for puzzle IDs, create list
+        ArrayList<String> puzzles = new ArrayList<>();
+        try {
+            File file = new File(args[0]);
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                puzzles.add(scanner.nextLine());
+            }
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
 
 
 
 
-//        // Write results to file
-//        String filename = "times_" + args[0].substring(args[0].lastIndexOf('/')+1);
-//        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-//        ArrayList<Long> times;
-//        for (String s : puzzles) {
-//            writer.write(s + "\n");
-//
-//            Game a = new Game(s);
-//            times = graphSolver.solveGame(a);
-//            writer.write("Graph:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
-//
-//            Game b = new Game(s);
-//            times = gridSolver.solveGame(b);
-//            writer.write("Grid:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
-//
-//            writer.write("Equal solution:\t" + a.toString().equals(b.toString()) + "\n");
-//        }
-//        writer.close();
+        // Write results to file
+        String filename = "times_" + args[0].substring(args[0].lastIndexOf('/')+1);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+        ArrayList<Long> times;
+        for (String s : puzzles) {
+            writer.write(s + "\n");
+
+            Game a = new Game(s);
+            times = graphSolver.solveGame(a);
+            writer.write("Graph:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
+
+            Game b = new Game(s);
+            times = gridSolver.solveGame(b);
+            writer.write("Grid:\t" + times.get(0) + "\t" + times.get(1) + "\t" + times.get(2) + "\t" + times.get(3) + "\n");
+
+            writer.write("Equal solution:\t" + a.toString().equals(b.toString()) + "\n");
+        }
+        writer.close();
 
 
 //        // Only print solutions
