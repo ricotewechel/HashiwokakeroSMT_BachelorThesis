@@ -46,7 +46,7 @@ public class Generator {
             Node newNode = null; // The new node
             while (newNode == null) { // Loop until a valid new node has been found to place
                 if (triesForNewNode >= 1000) { // Above this threshold we conclude no new node can be placed that meets the conditions
-                    System.out.println("ERROR: " + game.getNodes().size() + "/" + nodeGoal + " nodes were able to be placed:");
+                    System.out.println("ERROR: " + game.getNodes().size() + "/" + nodeGoal + " nodes were able to be placed:"); // TODO Dit staat in mn paper niet zo beschreven
                     // Finish up and return the game
                     this.setNodeValues(game); // Count all bridge weights to determine node values
                     game.removeBridges(); // Remove all bridges to change solution into puzzle
@@ -73,7 +73,7 @@ public class Generator {
 
             // Actually add the new node and bridge to the game
             game.addNode(newNode); // Add new node to list of game nodes.
-            this.placeBridge(n, newNode, game); // Place a bridge between the two nodes with a random weight (1 or 2)
+            this.placeBridge(n, newNode, game); // Placea a bridge between the two nodes with a random weight (1 or 2)
 
             // Generate random bridges from newly created node to reachable nodes (this creates loops)
             int go;

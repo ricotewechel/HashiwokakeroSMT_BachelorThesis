@@ -29,7 +29,6 @@ public class GridSolver {
 
 
     public ArrayList<Long> solveGame(Game game) {
-//        Game secondgame = game;
         this.createVariables(game);
 
         long t0 = 0;
@@ -46,10 +45,24 @@ public class GridSolver {
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
             t0 = System.currentTimeMillis();
-            prover.addConstraint(this.validCellsConstraint1(game));
-            prover.addConstraint(this.neighborConstraint(game));
-            prover.addConstraint(this.nodesSatisfiedConstraint(game));
-            prover.addConstraint(this.nodesConnectedConstraint(game));
+
+
+            BooleanFormula validCells = this.validCellsConstraint1(game);
+//            System.out.println(validCells);
+            prover.addConstraint(validCells);
+
+            BooleanFormula neighbors = this.neighborConstraint(game);
+//            System.out.println(neighbors);
+            prover.addConstraint(neighbors);
+
+            BooleanFormula nodesSatisfied = this.nodesSatisfiedConstraint(game);
+//            System.out.println(nodesSatisfied);
+            prover.addConstraint(nodesSatisfied);
+
+            BooleanFormula nodesConnected = this.nodesConnectedConstraint(game);
+//            System.out.println(nodesConnected);
+            prover.addConstraint(nodesConnected);
+
             constrTime = System.currentTimeMillis() - t0; // Time it takes to construct all constraints
             times.add(constrTime);
 

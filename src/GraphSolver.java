@@ -45,10 +45,23 @@ public class GraphSolver {
         try (ProverEnvironment prover = this.context.newProverEnvironment(SolverContext.ProverOptions.GENERATE_MODELS)) {
             // Add constraints
             t0 = System.currentTimeMillis();
-            prover.addConstraint(this.validBridgeSizesConstraint());
-            prover.addConstraint(this.bridgesDontCrossConstraint(game));
-            prover.addConstraint(this.nodesSatisfiedConstraint(game));
-            prover.addConstraint(this.nodesConnectedConstraint(game));
+
+            BooleanFormula validBridges = this.validBridgeSizesConstraint();
+//            System.out.println(validBridges);
+            prover.addConstraint(validBridges);
+
+            BooleanFormula bridgesDontCross = this.bridgesDontCrossConstraint(game);
+//            System.out.println(bridgesDontCross);
+            prover.addConstraint(bridgesDontCross);
+
+            BooleanFormula nodesSatisfied = this.nodesSatisfiedConstraint(game);
+//            System.out.println(nodesSatisfied);
+            prover.addConstraint(nodesSatisfied);
+
+            BooleanFormula nodesConnected = this.nodesConnectedConstraint(game);
+//            System.out.println(nodesConnected);
+            prover.addConstraint(nodesConnected);
+
             constrTime = System.currentTimeMillis() - t0; // Time it takes to construct all constraints
             times.add(constrTime);
 
